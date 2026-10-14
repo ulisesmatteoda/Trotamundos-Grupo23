@@ -6,7 +6,7 @@
 
 - - -
 
-##2 Funcionalidad Primaria (Primary Functionality)
+## 2 Funcionalidad Primaria (Primary Functionality)
 
 \* \*\*UC-01 — Unificación e Integración Automática de Reservas\*\*: 
 Sondear y escanear correos electrónicos de usuarios e integrarse con APIs de terceros (aerolíneas, hoteles, rentadoras) para agregar automáticamente reservas al itinerario. 
