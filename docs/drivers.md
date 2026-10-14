@@ -8,54 +8,64 @@
 
 ## 2 Funcionalidad Primaria (Primary Functionality)
 
-\* \*\*UC-01 — Unificación e Integración Automática de Reservas\*\*: 
+* **UC-01 — Unificación e Integración Automática de Reservas**: 
 Sondear y escanear correos electrónicos de usuarios e integrarse con APIs de terceros (aerolíneas, hoteles, rentadoras) para agregar automáticamente reservas al itinerario. 
-\* \*\*UC-02 — Gestión Manual y Ciclo de Vida del Viaje\*\*: 
+* **UC-02 — Gestión Manual y Ciclo de Vida del Viaje**: 
 Permitir al usuario crear, modificar o eliminar reservas manualmente, agrupándolas por viaje y archivándolas/eliminándolas automáticamente al completarse el viaje. 
-\* \*\*UC-03 — Analítica de Datos y Monetización\*\*: 
+* **UC-03 — Analítica de Datos y Monetización**: 
 Recopilar y procesar tendencias y datos de viajes para la ejecución de consultas analíticas pesadas por parte del equipo de datos. 
 
 - - -
 
+## 3. Escenarios de Atributos de Calidad (Quality Attribute Scenarios)
 
-## 3\. Escenarios de Atributos de Calidad (Quality Attribute Scenarios) ### Resumen y Priorización de Escenarios 
-| ID | Atributo de Calidad | Descripción Corta | Prioridad Negocio | Impacto Arquitectónico | |---|---|---|---|---| | 
-\*\*QA-01\*\* | Performance (Latencia) | La latencia debe ser minima  | Alta | Alta | 
- \*\*QA-02\*\* | Disponibilidad | El sistema es de uso global y debe ser accesible en todo momento | Alta | Alta | |
- \*\*QA-03\*\* | Interoperabilidad| El sistema debe poder conectarse via APIs estandar y poder comunicarse bien con otros sistemas | Alta | Media | | 
-\*\*QA-04\*\* | Seguridad | Se debe asegurar que no se pueda acceder a datos de cualquier usuario || Alta | Media | 
-\*\*QA-05\*\* | Evolucionabilidad y Mantenibilidad |Debe prever integracion futura de otros transportes  | Alta | Alta | 
-\*\QA-06\*\* | Usabilidad | El sistema debe proveer una interfaz rica y preparado [ara operar en el mercado internacional | Alta | Media |
-\*\QA-07\*\* | Escalabilidad | Soportar 15M de cuentas, 2M activos/semana y picos disruptivos | Alta | Alta | 
+### Resumen y Priorización de Escenarios
+
+| ID | Atributo de Calidad | Descripción Corta | Prioridad Negocio | Impacto Arquitectónico | 
+|---|---|---|---|---| | 
+**QA-01** | Performance (Latencia) | La latencia debe ser minima  | Alta | Alta | 
+**QA-02** | Disponibilidad | El sistema es de uso global y debe ser accesible en todo momento | Alta | Alta | |
+**QA-03** | Interoperabilidad| El sistema debe poder conectarse via APIs estandar y poder comunicarse bien con otros sistemas | Alta | Media | | 
+**QA-04** | Seguridad | Se debe asegurar que no se pueda acceder a datos de cualquier usuario || Alta | Media | 
+**QA-05** | Evolucionabilidad y Mantenibilidad |Debe prever integracion futura de otros transportes  | Alta | Alta | 
+**QA-06** | Usabilidad | El sistema debe proveer una interfaz rica y preparado [ara operar en el mercado internacional | Alta | Media |
+**QA-07** | Escalabilidad | Soportar 15M de cuentas, 2M activos/semana y picos disruptivos | Alta | Alta | 
 
 - - -
 
 ### Detalle de Escenarios (Template de 6 Partes)
 
-#### \*\*QA-01a: Performance - Sincronización Asincrónica de Fuentes Externas\*\*
-\*\*\*Fuente del Estímulo\*\*: Sistema externo (aerolínea, hotel, proveedor de correo)
-\* \*\*Estímulo\*\*: Generación de una actualización o modificación de viaje
-\* \*\*Artefacto\*\*: Módulo de Integración y Sincronización de Trotamundos
-\* \*\*Ambiente\*\*: Normal
-\* \*\*Respuesta\*\*: El sistema procesa e integra la actualización en el itinerario del usuario
-\* \*\*Medida de Respuesta\*\*: La actualización se refleja en la plataforma en menos de 5 minutos desde su generación
+#### **QA-01a: Performance - Sincronización Asincrónica de Fuentes Externas**
+* **Fuente del Estímulo**: Sistema externo (aerolínea, hotel, proveedor de correo)
+* **Estímulo**: Generación de una actualización o modificación de viaje
+* **Artefacto**: Módulo de Integración y Sincronización de Trotamundos
+* **Ambiente**: Normal
+* **Respuesta**: El sistema procesa e integra la actualización en el itinerario del usuario
+* **Medida de Respuesta**: La actualización se refleja en la plataforma en menos de 5 minutos desde su generación
 
-#### \*\*QA-01b: Performance - Latencia de Interacción Web\*\*
-\*\*\*Fuente del Estímulo\*\*: Usuario final desde el navegador web
-\* \*\*Estímulo\*\*: El usuario realiza una consulta o interacción desde el navegador web.
-\* \*\*Artefacto\*\*: Aplicación Web / API REST de Trotamundos.
-\* \*\*Ambiente\*\*: Normal
-\* \*\*Respuesta\*\*: El sistema procesa la solicitud y renderiza la interfaz gráfica.
-\* \*\*Medida de Respuesta\*\*: Tiempo de respuesta menor a 800 ms
+#### **QA-01b: Performance - Latencia de Interacción Web**
+* **Fuente del Estímulo**: Usuario final desde el navegador web
+* **Estímulo**: El usuario realiza una consulta o interacción desde el navegador web.
+* **Artefacto**: Aplicación Web / API REST de Trotamundos.
+* **Ambiente**: Normal
+* **Respuesta**: El sistema procesa la solicitud y renderiza la interfaz gráfica.
+* **Medida de Respuesta**: Tiempo de respuesta menor a 800 ms
 
-#### \*\*QA-01c: Performance - Rendimiento de Carga Inicial Mobile\*\*
-\*\*\*Fuente del Estímulo\*\*: Usuario final desde la app mobile
-\* \*\*Estímulo\*\*: El usuario abre la aplicación móvil en su dispositivo.
-\* \*\*Artefacto\*\*: Aplicacion Mobile
-\* \*\*Ambiente\*\*: Normal
-\* \*\*Respuesta\*\*: El sistema procesa la solicitud y renderiza la interfaz gráfica.
-\* \*\*Medida de Respuesta\*\*: First Contentful Paint (FCP) completado en menos de 1.4 segundos
+#### **QA-01c: Performance - Rendimiento de Carga Inicial Mobile**
+* **Fuente del Estímulo**: Usuario final desde la app mobile
+* **Estímulo**: El usuario abre la aplicación móvil en su dispositivo.
+* **Artefacto**: Aplicacion Mobile
+* **Ambiente**: Normal
+* **Respuesta**: El sistema procesa la solicitud y renderiza la interfaz gráfica.
+* **Medida de Respuesta**: First Contentful Paint (FCP) completado en menos de 1.4 segundos
 
+#### **QA-02: Disponibilidad - Uso global y accesible**
+* **Fuente del Estimulo**: Falla de infraestructura interna (ej. caída de un servidor/base de datos) o interrupción en un proveedor de la nube.
+* **Estimulo**: Ocurre una falla crítica no planificada en uno de los nodos o servicios del backend mientras hay usuarios activos.
+* **Artefacto**: Plataforma Backend / Servicios Core de Trotamundos.
+* **Ambiente**: Operación normal o pico de tráfico (24/7 global).
+* **Respuesta**:El sistema detecta automáticamente la falla, conmuta el tráfico a nodos redundantes de respaldo y recupera el servicio de forma transparente para el usuario.
+* **Medida de Respuesta**:El tiempo total acumulado de inactividad no planificada no supera los 5 minutos por mes.
 - - -
 
 ## 4. Restricciones (Constraints) 
