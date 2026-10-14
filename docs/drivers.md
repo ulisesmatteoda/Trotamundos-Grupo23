@@ -32,8 +32,29 @@ Recopilar y procesar tendencias y datos de viajes para la ejecución de consulta
 
 ### Detalle de Escenarios (Template de 6 Partes)
 
+#### \*\*QA-01a: Performance - Sincronización Asincrónica de Fuentes Externas\*\*
+\*\*\*Fuente del Estímulo\*\*: Sistema externo (aerolínea, hotel, proveedor de correo)
+\* \*\*Estímulo\*\*: Generación de una actualización o modificación de viaje
+\* \*\*Artefacto\*\*: Módulo de Integración y Sincronización de Trotamundos
+\* \*\*Ambiente\*\*: Normal
+\* \*\*Respuesta\*\*: El sistema procesa e integra la actualización en el itinerario del usuario
+\* \*\*Medida de Respuesta\*\*: La actualización se refleja en la plataforma en menos de 5 minutos desde su generación
 
-#### 
+#### \*\*QA-01b: Performance - Latencia de Interacción Web\*\*
+\*\*\*Fuente del Estímulo\*\*: Usuario final desde el navegador web
+\* \*\*Estímulo\*\*: El usuario realiza una consulta o interacción desde el navegador web.
+\* \*\*Artefacto\*\*: Aplicación Web / API REST de Trotamundos.
+\* \*\*Ambiente\*\*: Normal
+\* \*\*Respuesta\*\*: El sistema procesa la solicitud y renderiza la interfaz gráfica.
+\* \*\*Medida de Respuesta\*\*: Tiempo de respuesta menor a 800 ms
+
+#### \*\*QA-01c: Performance - Rendimiento de Carga Inicial Mobile\*\*
+\*\*\*Fuente del Estímulo\*\*: Usuario final desde la app mobile
+\* \*\*Estímulo\*\*: El usuario abre la aplicación móvil en su dispositivo.
+\* \*\*Artefacto\*\*: Aplicacion Mobile
+\* \*\*Ambiente\*\*: Normal
+\* \*\*Respuesta\*\*: El sistema procesa la solicitud y renderiza la interfaz gráfica.
+\* \*\*Medida de Respuesta\*\*: First Contentful Paint (FCP) completado en menos de 1.4 segundos
 
 - - -
 
