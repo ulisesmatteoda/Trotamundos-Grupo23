@@ -21,12 +21,19 @@ Recopilar y procesar tendencias y datos de viajes para la ejecución de consulta
 
 ### Resumen y Priorización de Escenarios
 | ID | Atributo de Calidad | Descripción Corta | UC Asociado | Prioridad Negocio | Impacto Arquitectónico | |---|---|---|---|---|---| 
+
 | **QA-01** | Performance (Latencia) | La latencia debe ser mínima tanto en la web/móvil como en la sincronización | UC-01, UC-02 | Alta | Alta | 
+
 | **QA-02** | Disponibilidad | El sistema es de uso global y debe ser accesible en todo momento (24/7) | Todos los UC | Alta | Alta | 
+
 | **QA-03** | Interoperabilidad | Conexión vía APIs estándar con aerolíneas, hoteles, agencias y proveedores de correo | UC-01 | Alta | Media |
+
 | **QA-04** | Seguridad | Asegurar la privacidad de los itinerarios y evitar accesos no autorizados | Todos los UC | Alta | Media | 
+
 | **QA-05** | Evolucionabilidad y Mantenibilidad | Prever la integración futura de nuevos medios de transporte y servicios | UC-01 | Alta | Alta | 
+
 | **QA-06** | Usabilidad | Interfaz rica y preparada para operar en el mercado internacional (multirregión) | UC-01, UC-02 | Alta | Media |
+
 | **QA-07** | Escalabilidad | Soportar 15M de cuentas, 2M de activos/semana y picos masivos disruptivos | Todos los UC | Alta | Alta |
 
 - - -
