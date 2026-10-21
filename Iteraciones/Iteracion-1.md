@@ -23,26 +23,49 @@ Por lo tanto, el elemento seleccionado para refinar es el **Sistema Trotamundos 
 
 - - -
 
-## Paso 4: Seleccionar conceptos de diseño
+## Paso 4: Elegir los conceptos de diseño que satisfacen los drivers seleccionados
 
-Para dar soporte a los drivers arquitectónicos priorizados, se seleccionan los siguientes patrones y tácticas a nivel global:
+Para esta primera iteración, la decisión arquitectónica principal es adoptar un estilo híbrido: Arquitectura Lógica de Capas (Layers) desplegada sobre un modelo físico Cliente-Servidor Multi-Tier (N-Tier). Esta selección permite establecer una estructura general robusta para el sistema greenfield.
 
-*   **Patrón de Estructura - Arquitectura en Capas (N-Tier):** Se define un modelo de 5 capas para separar la presentación, el enrutamiento, las reglas de negocio, la integración y la persistencia (QA-05). Se utilizará un enfoque híbrido donde la Capa de Negocio orquesta a las capas de Integración y Datos en paralelo.
-*   **Táctica de Desacoplamiento - Message Queuing:** Para absorber picos de tráfico y garantizar la asincronía (QA-01, CRN-02), se introduce una Cola de Mensajes (Publish-Subscribe) que separa la recepción de la solicitud de su procesamiento pesado en segundo plano.
-*   **Táctica de Gestión de Datos - Proceso ETL:** Para cumplir con la separación de cargas transaccionales y analíticas (CRN-03), se implementa un proceso ETL (Extract, Transform, Load) que transfiere datos del entorno operacional al repositorio analítico sin afectar la performance en vivo.
+**Justificación de la decisión:**
+
+- **Soporte funcional y modularidad (CRN-01 y CON-03)**: El patrón de Layers organiza el código separando estrictamente la interfaz de usuario, la lógica de negocio, la integración de APIs externas y el acceso a datos. Esto permite un desarrollo guiado por especificaciones ordenado y facilita la construcción del prototipo por etapas.
+- **Soporte multiplataforma (CON-01)**: El modelo Cliente-Servidor aísla completamente las aplicaciones cliente (Web y Móvil) de la infraestructura central, comunicándose únicamente a través de APIs estándar.
+- **Escalabilidad y Disponibilidad (QA-07 y QA-02)**: El patrón Multi-Tier permite que cada capa lógica se despliegue en clústeres de servidores físicos independientes. Ante picos masivos de tráfico, la capa de Lógica de Negocio (Backend) puede escalar horizontalmente sin afectar a los clientes ni a los servidores de bases de datos.
+- **Desacoplamiento asincrónico (CRN-02 y QA-01a)**: Dentro de la capa de lógica de negocio, se aislará el procesamiento de correos mediante sub-módulos de Workers Asincrónicos (procesamiento en segundo plano), garantizando que los hilos de respuesta web no se bloqueen.
 
 - - - 
 
 ## Paso 5: Instanciar elementos arquitectónicos y asignar responsabilidades
 
-En base a los conceptos elegidos, se instancian las 5 capas principales del sistema con las siguientes responsabilidades:
+A partir del estilo de Capas (Layers) y Cliente-Servidor Multi-Tier seleccionado, se "abre la caja" del sistema Trotamundos y se instancian las siguientes capas lógicas principales, asignándoles las responsabilidades que cubren la funcionalidad primaria (UC-01, UC-02 y UC-03):
 
-- **Capa de Presentación:** Contiene las aplicaciones cliente (Web SPA y Mobile). Es responsable exclusiva de la interfaz de usuario.
-- **Capa de Servicios y API:** Actúa como API Gateway. Centraliza la seguridad, autenticación y enrutamiento hacia la lógica interna.
-- **Capa de Lógica de Negocio (Orquestador Central):** Contiene el núcleo del sistema. Posee un módulo **Sincrónico** para atención inmediata al usuario, una **Cola de Mensajes** para encolar tareas pesadas, y un conjunto de **Workers Asincrónicos** que procesan reglas de negocio. Esta capa orquesta el flujo llamando a los adaptadores y persistiendo luego los datos.
-- **Capa de Integración Externa:** Contiene los Adaptadores (Anti-Corruption Layer). Su única responsabilidad es traducir las comunicaciones con sistemas externos (correos, aerolíneas). **No interactúa con la base de datos**; devuelve la información normalizada a la Capa de Negocio.
-- **Capa de Datos:** Se divide en dos repositorios desacoplados: una base **OLTP** para transacciones rápidas, un **Proceso ETL** que extrae y transforma la información periódicamente, y un Data Warehouse **OLAP** para las consultas analíticas del negocio.
-  
+**1. Capa de Presentación (Client Layer)**
+*   **Responsabilidad:** Renderizar la interfaz de usuario, capturar la interacción y mostrar los itinerarios.
+*   **Elementos:** Aplicación Web (SPA) y Aplicación Móvil (iOS/Android) (cumpliendo *CON-01*).
+*   **Mapeo Funcional:** Soporta la interacción del **UC-02**, permitiendo al usuario visualizar, crear o modificar reservas manualmente.
+
+**2. Capa de Servicios y API (API Gateway / Services Layer)**
+*   **Responsabilidad:** Actuar como único punto de entrada al backend. Manejar el enrutamiento de peticiones, la autenticación, la gestión de sesiones y la validación de seguridad (*QA-04*).
+*   **Mapeo Funcional:** Expone los *endpoints* (API REST/GraphQL) necesarios para que las aplicaciones cliente ejecuten el **UC-02**.
+
+**3. Capa de Lógica de Negocio (Business Logic Layer)**
+*   **Responsabilidad:** Ejecutar las reglas core de "Trotamundos". Se divide internamente para manejar el tráfico sincrónico y asincrónico.
+*   **Elementos:**
+    *   *Módulo de Gestión de Viajes (Sincrónico):* Procesa las peticiones en vivo de los usuarios (agrupación de itinerarios y ciclo de vida para el **UC-02**).
+    *   *Módulo de Workers Asincrónicos (Procesamiento en background):* Hilos de ejecución dedicados a realizar el sondeo y escaneo periódico de correos (*CRN-02*). Garantiza la ejecución del **UC-01** sin bloquear la navegación del usuario (*QA-01a*).
+
+**4. Capa de Integración Externa (Integration Layer)**
+*   **Responsabilidad:** Manejar la interoperabilidad y aislar al núcleo del sistema de los cambios en las APIs de terceros (*QA-03*).
+*   **Elementos:** Adaptadores (Adapters/Anti-Corruption Layers) para APIs de Aerolíneas, Hoteles y clientes de correo (IMAP/OAuth2).
+*   **Mapeo Funcional:** Soporta directamente el **UC-01**, normalizando la información que llega de distintas fuentes antes de pasarla a la capa de negocio.
+
+**5. Capa de Datos (Data Layer)**
+*   **Responsabilidad:** Persistencia, almacenamiento y recuperación eficiente de la información, separando las cargas de trabajo (*CRN-03*).
+*   **Elementos:**
+    *   *Base de Datos Operacional (OLTP):* Almacena el estado actual de los viajes, usuarios y configuraciones para las consultas rápidas y en vivo (**UC-01** y **UC-02**).
+    *   *Repositorio Analítico / Data Warehouse (OLAP):* Base de datos segregada físicamente que consolida tendencias e histórico de viajes. Permite que el equipo de datos ejecute consultas pesadas para monetización (**UC-03**) sin degradar la performance de los usuarios activos.
+
 - - - 
 
 ## Paso 6: Bosquejar vistas y registrar decisiones de diseño
@@ -77,69 +100,61 @@ graph TD
 ```
 
 - **Vista 2: Diagrama Estructural de Capas (Arquitectura Base)**
-Esta vista ilustra cómo se "abre la caja" del Sistema Trotamundos en 5 capas lógicas. La comunicación fluye de "arriba hacia abajo" (top-down) hasta llegar a la Capa de Lógica de Negocio, la cual actúa como orquestador central interactuando en paralelo con la Capa de Datos y la Capa de Integración. Este diseño aísla a los clientes de la complejidad de la persistencia y de los proveedores de terceros, garantizando la Mantenibilidad (QA-05).
+Esta vista ilustra cómo se "abre la caja" del Sistema Trotamundos en 5 capas lógicas. La comunicación fluye principalmente de "arriba hacia abajo" (top-down), aislando a los clientes de la complejidad de la base de datos y de las integraciones con terceros, garantizando la Mantenibilidad (QA-05).
 
 ```mermaid
 flowchart TD
+    %% Estilos de las cajas
+    classDef layer fill:#f9f9f9,stroke:#333,stroke-width:2px,color:#333;
     classDef client fill:#d4e6f1,stroke:#2980b9,stroke-width:2px,color:#000;
     classDef core fill:#d1f2eb,stroke:#1abc9c,stroke-width:2px,color:#000;
     classDef data fill:#fadbd8,stroke:#c0392b,stroke-width:2px,color:#000;
     classDef external fill:#fcf3cf,stroke:#f1c40f,stroke-width:2px,color:#000;
 
-    subgraph CapaPresentacion ["1. Capa de Presentación"]
-        Web("Aplicación Web SPA"):::client
-        App("App Móvil iOS/Android"):::client
+    %% Nodos principales
+    subgraph CapaPresentacion [1. Capa de Presentación]
+        Web[Aplicación Web SPA]:::client
+        App[App Móvil iOS/Android]:::client
     end
 
-    subgraph CapaAPI ["2. Capa de Servicios y API"]
-        Gateway("API Gateway"):::core
+    subgraph CapaAPI [2. Capa de Servicios y API]
+        Gateway[API Gateway / Seguridad y Ruteo]:::core
     end
 
-    subgraph CapaNegocio ["3. Capa de Lógica de Negocio"]
-        Sync("Gestión de Viajes - Sincrónico"):::core
-        Queue>Cola de mensajes]:::core
-        Async("Workers Asincrónicos"):::core
-        
-        Sync -- "encola tareas" --> Queue
-        Queue --> Async
+    subgraph CapaNegocio [3. Capa de Lógica de Negocio]
+        Sync[Gestión de Viajes Sincrónico]:::core
+        Async[Workers Asincrónicos / Background]:::core
     end
 
-    %% Capas inferiores en paralelo
-    subgraph BottomLayers [" "]
-        style BottomLayers fill:none,stroke:none
-        
-        subgraph CapaDatos ["5. Capa de Datos"]
-            OLTP[("OLTP")]:::data
-            ETL("Proceso ETL"):::data
-            OLAP[("Data Warehouse OLAP")]:::data
-            
-            OLTP -.-> ETL
-            ETL -.-> OLAP
-        end
-
-        subgraph CapaIntegracion ["4. Capa de Integración Externa"]
-            Adapters("Adaptadores / ACL"):::external
-        end
+    subgraph CapaIntegracion [4. Capa de Integración Externa]
+        Adapters[Adaptadores / Anti-Corruption Layer]:::external
     end
 
-    Web --> Gateway
-    App --> Gateway
+    subgraph CapaDatos [5. Capa de Datos]
+        OLTP[(Base de Datos Operacional - OLTP)]:::data
+        OLAP[(Data Warehouse Analítico - OLAP)]:::data
+    end
+
+    %% Relaciones y flujo de datos
+    Web -->|Peticiones HTTP| Gateway
+    App -->|Peticiones HTTP| Gateway
     
-    Gateway --> Sync
+    Gateway -->|Enrutamiento Interno| Sync
+    Gateway -->|Enrutamiento Interno| Async
     
-    Sync --> Adapters
-    Sync --> OLTP
+    Sync -->|Lectura/Escritura en vivo| OLTP
+    Sync -.->|Volcado diferido| OLAP
     
-    Async --> Adapters
-    Async -- "persiste datos normalizados" --> OLTP
+    Async -->|Consultas y comandos| Adapters
+    Sync -->|Consultas| Adapters
+    
+    Adapters -->|Lectura/Escritura en vivo| OLTP
 ```
 **Registro de Decisiones de Diseño Clave:**
 
 - **Aislamiento de Capas:** Se establece una restricción arquitectónica donde la Capa de Presentación desconoce por completo la existencia de la base de datos o de las APIs de terceros. Todo el tráfico hacia el backend debe pasar obligatoriamente por la Capa de Servicios (API Gateway).
 - **División de Cargas:** Se decide separar la ejecución de tareas de usuario (sincrónicas) de las tareas de procesamiento en segundo plano (asincrónicas) dentro de la Capa de Negocio para proteger la latencia y la escalabilidad (QA-01 y QA-07).
-- **Orquestación y Desacoplamiento Interno:** Se introduce una Cola de Mensajes dentro de la Capa de Negocio para separar la respuesta rápida al usuario del procesamiento pesado (workers asincrónicos), protegiendo la performance (QA-01).
-- **Consistencia Analítica:** Se define un proceso ETL unidireccional que alimenta el Data Warehouse (OLAP) a partir de la base operacional (OLTP), garantizando que las consultas pesadas no impacten el sistema en vivo (CRN-03).
-- **Independencia de Datos:** Se desacopla físicamente y lógicamente el almacenamiento de datos operacionales (OLTP) del almacenamiento analítico (OLAP).
+- **Independencia de Datos:** Se desacopla físicamente y lógicamente el almacenamiento de datos operacionales (OLTP) del almacenamiento analítico (OLAP), previniendo que las consultas pesadas de negocio degraden la disponibilidad del usuario final (CRN-03).
 - **Documentación detallada:** Consultar el [ADR-001: Selección del Estilo Arquitectónico General y Patrón de Despliegue](../adrs/adr-001-estilo-arquitectonico.md) que define la elección de la arquitectura Cliente-Servidor Multi-Tier en Capas, estableciendo las reglas de aislamiento de capas, separación de procesamiento sincrónico/asincrónico y segregación de datos OLTP/OLAP.
 
 - - - 
@@ -151,13 +166,13 @@ Con las vistas arquitectónicas definidas, se procede a evaluar cómo las decisi
 
 | Driver (Requerimiento) | Decisión Arquitectónica que lo aborda | Estado al final de la Iteración 1 |
 | :--- | :--- | :--- |
-| **UC-01 y UC-02** (Gestión de viajes manual y automática) | División de responsabilidades en 5 capas, con la Capa de Negocio actuando como orquestador central. | **Parcialmente Abordado:** Estructura general definida; falta el diseño de interfaces internas (Iteración 2). |
-| **QA-01a y CRN-02** (Performance asincrónica y escaneo) | Implementación de una **Cola de Mensajes** y separación entre Módulo Sincrónico y Workers Asincrónicos. | **Abordado.** |
-| **QA-03a, b, c, d** (Interoperabilidad general) | Creación de una Capa de Integración (Adaptadores) gestionada exclusivamente por la Lógica de Negocio. | **Abordado.** |
-| **QA-05a, QA-05b** (Evolucionabilidad y Mantenibilidad) | Arquitectura en capas. Los adaptadores no tocan la BD, evitando el acoplamiento de datos con sistemas de terceros. | **Abordado.** |
-| **CRN-03 y UC-03** (Separación de cargas y Analítica) | Implementación de un **Proceso ETL** que migra datos de la base operacional (OLTP) al Data Warehouse (OLAP). | **Abordado.** |
-| **QA-01b, QA-01c** (Latencia Web y FCP Mobile) | Delegación visual a la SPA/Mobile y ruteo a través de un API Gateway. | **Parcialmente Abordado.** |
-| **QA-02 y QA-07** (Disponibilidad y Escalabilidad ante picos) | Despliegue Multi-Tier y uso de colas para absorber picos (Backpressure). | **Parcialmente Abordado:** Falta definir nodos, réplicas y balanceadores en una iteración de infraestructura. |
+| **UC-01 y UC-02** (Gestión de viajes manual y automática) | División de responsabilidades en 5 capas lógicas (Presentación, API, Negocio, Integración, Datos). | **Parcialmente Abordado:** Se definió la estructura de alto nivel donde residirán, pero falta diseñar su lógica interna en la Iteración 2. |
+| **QA-01a y CRN-02** (Performance asincrónica y escaneo de correos) | Separación del Módulo de Gestión (Sincrónico) y los Workers Asincrónicos en la Capa de Negocio. | **Abordado.** |
+| **QA-03a, b, c, d** (Interoperabilidad general) | Creación de una Capa de Integración Externa dedicada con patrón de Adaptadores (Anti-Corruption Layer). | **Abordado.** |
+| **QA-05a, QA-05b** (Evolucionabilidad y Mantenibilidad) | Patrón de Capas Estrictas (Strict Layering) y aislamiento de dependencias en la Capa de Integración. | **Abordado.** |
+| **CRN-03 y UC-03** (Separación de cargas de trabajo y Analítica) | División de la Capa de Datos en bases operacionales (OLTP) y analíticas (OLAP). | **Abordado.** |
+| **QA-01b, QA-01c** (Latencia Web y FCP Mobile) | Delegación visual a la Capa de Presentación (SPA/Mobile) y canalización a través de un API Gateway. | **Parcialmente Abordado:** La estructura soporta baja latencia, pero requiere definir componentes concretos de frontend y red. |
+| **QA-02, QA-07a, QA-07b** (Disponibilidad y Escalabilidad ante picos) | Elección de despliegue físico Cliente-Servidor Multi-Tier. | **No Abordado Completamente:** Requiere una iteración específica de infraestructura (ej. Iteración 4) para definir balanceadores, instancias y redundancia. |
 
 
 **Conclusión de la Iteración 1:**
