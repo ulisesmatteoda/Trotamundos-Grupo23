@@ -66,6 +66,62 @@ A partir del estilo de Capas (Layers) y Cliente-Servidor Multi-Tier seleccionado
     *   *Base de Datos Operacional (OLTP):* Almacena el estado actual de los viajes, usuarios y configuraciones para las consultas rápidas y en vivo (**UC-01** y **UC-02**).
     *   *Repositorio Analítico / Data Warehouse (OLAP):* Base de datos segregada físicamente que consolida tendencias e histórico de viajes. Permite que el equipo de datos ejecute consultas pesadas para monetización (**UC-03**) sin degradar la performance de los usuarios activos.
 
+- - - 
+
+## Paso 6: Bosquejar vistas y registrar decisiones de diseño
+
+El siguiente diagrama ilustra la arquitectura de 5 capas lógicas diseñada para el sistema Trotamundos. La comunicación fluye principalmente de "arriba hacia abajo" (top-down), aislando a los clientes de la complejidad de la base de datos y de las integraciones con terceros.
+
+```mermaid
+flowchart TD
+    %% Estilos de las cajas
+    classDef layer fill:#f9f9f9,stroke:#333,stroke-width:2px,color:#333;
+    classDef client fill:#d4e6f1,stroke:#2980b9,stroke-width:2px,color:#000;
+    classDef core fill:#d1f2eb,stroke:#1abc9c,stroke-width:2px,color:#000;
+    classDef data fill:#fadbd8,stroke:#c0392b,stroke-width:2px,color:#000;
+    classDef external fill:#fcf3cf,stroke:#f1c40f,stroke-width:2px,color:#000;
+
+    %% Nodos principales
+    subgraph CapaPresentacion [1. Capa de Presentación]
+        Web[Aplicación Web SPA]:::client
+        App[App Móvil iOS/Android]:::client
+    end
+
+    subgraph CapaAPI [2. Capa de Servicios y API]
+        Gateway[API Gateway / Seguridad y Ruteo]:::core
+    end
+
+    subgraph CapaNegocio [3. Capa de Lógica de Negocio]
+        Sync[Gestión de Viajes Sincrónico]:::core
+        Async[Workers Asincrónicos / Background]:::core
+    end
+
+    subgraph CapaIntegracion [4. Capa de Integración Externa]
+        Adapters[Adaptadores / Anti-Corruption Layer]:::external
+    end
+
+    subgraph CapaDatos [5. Capa de Datos]
+        OLTP[(Base de Datos Operacional - OLTP)]:::data
+        OLAP[(Data Warehouse Analítico - OLAP)]:::data
+    end
+
+    %% Relaciones y flujo de datos
+    Web -->|Peticiones HTTP| Gateway
+    App -->|Peticiones HTTP| Gateway
+    
+    Gateway -->|Enrutamiento Interno| Sync
+    Gateway -->|Enrutamiento Interno| Async
+    
+    Sync -->|Lectura/Escritura en vivo| OLTP
+    Sync -.->|Volcado diferido| OLAP
+    
+    Async -->|Consultas y comandos| Adapters
+    Sync -->|Consultas| Adapters
+    
+    Adapters -->|Lectura/Escritura en vivo| OLTP
+```
+
+- - - 
 
 
 
