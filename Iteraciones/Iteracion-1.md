@@ -162,6 +162,7 @@ flowchart TD
 
 Con las vistas arquitectónicas definidas, se procede a evaluar cómo las decisiones tomadas en esta iteración abordan los requerimientos críticos (drivers) establecidos para "Trotamundos".
 
+
 | Driver (Requerimiento) | Decisión Arquitectónica que lo aborda | Estado al final de la Iteración 1 |
 | :--- | :--- | :--- |
 | **UC-01 y UC-02** (Gestión de viajes manual y automática) | División de responsabilidades en 5 capas lógicas (Presentación, API, Negocio, Integración, Datos). | **Parcialmente Abordado:** Se definió la estructura de alto nivel donde residirán, pero falta diseñar su lógica interna en la Iteración 2. |
@@ -171,6 +172,7 @@ Con las vistas arquitectónicas definidas, se procede a evaluar cómo las decisi
 | **CRN-03 y UC-03** (Separación de cargas de trabajo y Analítica) | División de la Capa de Datos en bases operacionales (OLTP) y analíticas (OLAP). | **Abordado.** |
 | **QA-01b, QA-01c** (Latencia Web y FCP Mobile) | Delegación visual a la Capa de Presentación (SPA/Mobile) y canalización a través de un API Gateway. | **Parcialmente Abordado:** La estructura soporta baja latencia, pero requiere definir componentes concretos de frontend y red. |
 | **QA-02, QA-07a, QA-07b** (Disponibilidad y Escalabilidad ante picos) | Elección de despliegue físico Cliente-Servidor Multi-Tier. | **No Abordado Completamente:** Requiere una iteración específica de infraestructura (ej. Iteración 4) para definir balanceadores, instancias y redundancia. |
+
 
 **Conclusión de la Iteración 1:**
 La arquitectura base elegida (Capas + Multi-Tier) ha demostrado ser sólida para estructurar el sistema y soporta desde el inicio los atributos críticos de interoperabilidad, mantenibilidad y separación de cargas. Sin embargo, para que los Casos de Uso primarios puedan ser implementados y documentados adecuadamente (habilitando el *Spec-driven development*), es indispensable detallar el interior de las capas clave.
