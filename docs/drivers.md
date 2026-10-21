@@ -104,7 +104,7 @@ Recopilar y procesar tendencias y datos de viajes para la ejecución de consulta
 * **Respuesta:** El sistema envía los datos del itinerario afectado a la agencia preferida del usuario para facilitar una rápida resolución.
 * **Medida de Respuesta:** La información se transfiere a la agencia con éxito en menos de 2 segundos.
 
-### **QA-05a: Evolucionabilidad - Integración de Nuevo Medio de Transporte**
+#### **QA-05a: Evolucionabilidad - Integración de Nuevo Medio de Transporte**
 * **Fuente del Estímulo:** Equipo de desarrollo.
 * **Estímulo:** El negocio solicita agregar un nuevo tipo de transporte (ej. trenes o micros) al sistema de itinerarios.
 * **Artefacto:** Capa de Integración y Capa de Lógica de Negocio.
@@ -112,7 +112,7 @@ Recopilar y procesar tendencias y datos de viajes para la ejecución de consulta
 * **Respuesta:** El equipo extiende el modelo de datos base y crea un nuevo adaptador para el proveedor de trenes, reutilizando la arquitectura existente sin alterar ni reescribir el código que procesa los vuelos y hoteles.
 * **Medida de Respuesta:** La nueva funcionalidad se integra en menos de 2 sprints (o 4 semanas) de trabajo, con 0 (cero) modificaciones en el código central (Core) ya existente.
 
-### **QA-05b: Mantenibilidad - Actualización de API de Proveedor**
+#### **QA-05b: Mantenibilidad - Actualización de API de Proveedor**
 * **Fuente del Estímulo:** Equipo de mantenimiento / desarrollo.
 * **Estímulo:** Un proveedor de correo o aerolínea (ej. Gmail o Iberia) cambia sus políticas de seguridad o formato de respuesta, requiriendo una actualización en el sistema.
 * **Artefacto:** Módulo de Adaptadores (Capa de Integración).
