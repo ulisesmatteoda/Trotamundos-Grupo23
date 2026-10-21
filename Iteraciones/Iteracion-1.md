@@ -69,10 +69,37 @@ A partir del estilo de Capas (Layers) y Cliente-Servidor Multi-Tier seleccionado
 - - - 
 
 ## Paso 6: Bosquejar vistas y registrar decisiones de diseño
+En este paso se generan las representaciones visuales de la arquitectura base definida para Trotamundos y se formalizan las restricciones de diseño. Para esta iteración inicial, se proponen dos vistas fundamentales: la Vista de Contexto y la Vista Estructural de Capas.
 
-El siguiente diagrama ilustra la arquitectura de 5 capas lógicas diseñada para el sistema Trotamundos. La comunicación fluye principalmente de "arriba hacia abajo" (top-down), aislando a los clientes de la complejidad de la base de datos y de las integraciones con terceros.
+- **Vista 1: Diagrama de Contexto (Nivel 1)**
+Esta vista define los límites del sistema "Trotamundos" y expone todas sus interacciones con actores y sistemas externos, lo cual es crítico para visualizar el cumplimiento de los escenarios de Interoperabilidad (QA-03).
 
-```mermaid
+graph TD
+    %% Estilos
+    classDef usuario fill:#08427b,stroke:#052e56,stroke-width:2px,color:#fff;
+    classDef sistema fill:#1168bd,stroke:#0b4884,stroke-width:2px,color:#fff;
+    classDef externo fill:#999999,stroke:#666666,stroke-width:2px,color:#fff;
+
+    %% Nodos
+    User((Viajero\nApp Web/Mobile)):::usuario
+    
+    System[Sistema Trotamundos\nAgregador de Viajes]:::sistema
+    
+    Mail[Servidores de Correo\nGmail, Outlook]:::externo
+    Providers[APIs de Proveedores\nAerolíneas, Hoteles]:::externo
+    Agency[Agencia Preferida\nSistema de Soporte]:::externo
+    Social[Redes Sociales\nAPI Graph]:::externo
+
+    %% Relaciones
+    User -- "Consulta y gestiona itinerarios\n[HTTPS/REST]" --> System
+    System -- "Escanea confirmaciones\n[IMAP/OAuth2]" --> Mail
+    System -- "Sincroniza estado de reservas\n[HTTPS/JSON]" --> Providers
+    System -- "Deriva problemas y detalles\n[HTTPS/REST]" --> Agency
+    System -- "Publica estados de viaje\n[OAuth2]" --> Social
+
+- **Vista 2: Diagrama Estructural de Capas (Arquitectura Base)**
+Esta vista ilustra cómo se "abre la caja" del Sistema Trotamundos en 5 capas lógicas. La comunicación fluye principalmente de "arriba hacia abajo" (top-down), aislando a los clientes de la complejidad de la base de datos y de las integraciones con terceros, garantizando la Mantenibilidad (QA-05).
+
 flowchart TD
     %% Estilos de las cajas
     classDef layer fill:#f9f9f9,stroke:#333,stroke-width:2px,color:#333;
@@ -119,10 +146,11 @@ flowchart TD
     Sync -->|Consultas| Adapters
     
     Adapters -->|Lectura/Escritura en vivo| OLTP
-```
-**Registro de Decisiones de Diseño:**
-- Se establece una restricción arquitectónica estricta: las capas superiores solo pueden comunicarse con la capa inmediatamente inferior (Strict Layering), con excepción de la Capa de Lógica de Negocio que interactúa tanto con Datos como con Integración Externa.
-- La Capa de Presentación desconoce por completo la existencia de la base de datos o de las APIs de terceros; todo pasa por el API Gateway.
+
+**Registro de Decisiones de Diseño Clave**
+- **Aislamiento de Capas:** Se establece una restricción arquitectónica donde la Capa de Presentación desconoce por completo la existencia de la base de datos o de las APIs de terceros. Todo el tráfico hacia el backend debe pasar obligatoriamente por la Capa de Servicios (API Gateway).
+- **División de Cargas:** Se decide separar la ejecución de tareas de usuario (sincrónicas) de las tareas de procesamiento en segundo plano (asincrónicas) dentro de la Capa de Negocio para proteger la latencia y la escalabilidad (QA-01 y QA-07).
+- **Independencia de Datos:** Se desacopla físicamente y lógicamente el almacenamiento de datos operacionales (OLTP) del almacenamiento analítico (OLAP), previniendo que las consultas pesadas de negocio degraden la disponibilidad del usuario final (CRN-03).
 
 - - - 
 
