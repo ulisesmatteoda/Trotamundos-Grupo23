@@ -71,6 +71,23 @@ Recopilar y procesar tendencias y datos de viajes para la ejecución de consulta
 * **Ambiente**: Operación normal o pico de tráfico (24/7 global).
 * **Respuesta**:El sistema detecta automáticamente la falla, conmuta el tráfico a nodos redundantes de respaldo y recupera el servicio de forma transparente para el usuario.
 * **Medida de Respuesta**:El tiempo total acumulado de inactividad no planificada no supera los 5 minutos por mes.
+
+#### **QA-07a: Escalabilidad – Picos Extremos por Disrupciones Masivas de Viaje**
+* **Fuente del Estímulo:** Usuarios activos (viajeros afectados).
+* **Estímulo:** Aumento repentino del 500 % en el volumen de consultas simultáneas debido a una interrupción masiva de viajes (ej. disrupciones climáticas o cancelación masiva de vuelos).
+* **Artefacto:** Plataforma Trotamundos (API Gateway y Servicios de Consulta de Itinerarios).
+* **Ambiente:** Operación durante evento de crisis/disrupción.
+* **Respuesta:** El sistema escala horizontalmente sus instancias de consulta de forma automática para absorber el pico de tráfico sin rechazar solicitudes.
+* **Medida de Respuesta:** El 99 % de las peticiones web mantienen un tiempo de respuesta menor a 800 ms (y menor a 1.4 s de *First Contentful Paint* en móviles), con 0 % de errores por sobrecarga.
+
+#### **QA-07b: Escalabilidad – Carga Sostenida de Usuarios Activos y Picos Semanales**
+* **Fuente del Estímulo:** Base global de clientes (hasta 15 millones de cuentas registradas).
+* **Estímulo:** Tráfico recurrente de 2 millones de usuarios activos semanales, concentrando picos de uso entre domingo-lunes y jueves-viernes.
+* **Artefacto:** Módulo de Gestión de Reservas y Almacenamiento de Datos.
+* **Ambiente:** Operación normal en días de pico semanal proyectado.
+* **Respuesta:** El sistema redistribuye las consultas hacia réplicas de lectura y balancea la carga de la base de datos.
+* **Medida de Respuesta:** La latencia promedio del sistema no se degrada más de un 10 % respecto a la operación en días de tráfico bajo.
+
 - - -
 
 ## 4. Restricciones (Constraints) 
