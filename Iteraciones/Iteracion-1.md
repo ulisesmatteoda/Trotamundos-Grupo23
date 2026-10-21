@@ -37,11 +37,12 @@ Para dar soporte a los drivers arquitectónicos priorizados, se seleccionan los 
 
 En base a los conceptos elegidos, se instancian las 5 capas principales del sistema con las siguientes responsabilidades:
 
-1.  **Capa de Presentación:** Contiene las aplicaciones cliente (Web SPA y Mobile). Es responsable exclusiva de la interfaz de usuario.
-2.  **Capa de Servicios y API:** Actúa como API Gateway. Centraliza la seguridad, autenticación y enrutamiento hacia la lógica interna.
-3.  **Capa de Lógica de Negocio (Orquestador Central):** Contiene el núcleo del sistema. Posee un módulo **Sincrónico** para atención inmediata al usuario, una **Cola de Mensajes** para encolar tareas pesadas, y un conjunto de **Workers Asincrónicos** que procesan reglas de negocio. Esta capa orquesta el flujo llamando a los adaptadores y persistiendo luego los datos.
-4.  **Capa de Integración Externa:** Contiene los Adaptadores (Anti-Corruption Layer). Su única responsabilidad es traducir las comunicaciones con sistemas externos (correos, aerolíneas). **No interactúa con la base de datos**; devuelve la información normalizada a la Capa de Negocio.
-5.  **Capa de Datos:** Se divide en dos repositorios desacoplados: una base **OLTP** para transacciones rápidas, un **Proceso ETL** que extrae y transforma la información periódicamente, y un Data Warehouse **OLAP** para las consultas analíticas del negocio.
+- **Capa de Presentación:** Contiene las aplicaciones cliente (Web SPA y Mobile). Es responsable exclusiva de la interfaz de usuario.
+- **Capa de Servicios y API:** Actúa como API Gateway. Centraliza la seguridad, autenticación y enrutamiento hacia la lógica interna.
+- **Capa de Lógica de Negocio (Orquestador Central):** Contiene el núcleo del sistema. Posee un módulo **Sincrónico** para atención inmediata al usuario, una **Cola de Mensajes** para encolar tareas pesadas, y un conjunto de **Workers Asincrónicos** que procesan reglas de negocio. Esta capa orquesta el flujo llamando a los adaptadores y persistiendo luego los datos.
+- **Capa de Integración Externa:** Contiene los Adaptadores (Anti-Corruption Layer). Su única responsabilidad es traducir las comunicaciones con sistemas externos (correos, aerolíneas). **No interactúa con la base de datos**; devuelve la información normalizada a la Capa de Negocio.
+- **Capa de Datos:** Se divide en dos repositorios desacoplados: una base **OLTP** para transacciones rápidas, un **Proceso ETL** que extrae y transforma la información periódicamente, y un Data Warehouse **OLAP** para las consultas analíticas del negocio.
+  
 - - - 
 
 ## Paso 6: Bosquejar vistas y registrar decisiones de diseño
