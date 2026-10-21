@@ -72,6 +72,38 @@ Recopilar y procesar tendencias y datos de viajes para la ejecución de consulta
 * **Respuesta**:El sistema detecta automáticamente la falla, conmuta el tráfico a nodos redundantes de respaldo y recupera el servicio de forma transparente para el usuario.
 * **Medida de Respuesta**:El tiempo total acumulado de inactividad no planificada no supera los 5 minutos por mes.
 
+#### **QA-03a: Interoperabilidad con APIs de Proveedores de Viajes (Aerolíneas, Hoteles, Rentadoras)**
+* **Fuente del Estímulo:** Sistema externo de viajes (API de aerolínea, hotel o arrendadora).
+* **Estímulo:** Envío de detalles de las reservas, actualizaciones o cancelaciones de un viaje a través de APIs estándar.
+* **Artefacto:** Módulo de Integración y Adaptadores (External Provider Integration Service).
+* **Ambiente:** Funcionamiento normal del sistema.
+* **Respuesta:** El sistema se conecta de manera fluida con las APIs estándar externas, recibe la información enviada por las agencias o aerolíneas y actualiza las reservas en el panel.
+* **Medida de Respuesta:** El 99% de los detalles, cambios y cancelaciones provenientes de las APIs externas se reflejan correctamente en el itinerario en menos de 30 segundos tras ser emitidos.
+
+#### **QA-03b: Interoperabilidad con Servidores de Correo Electrónico (Escaneo e Ingesta de E-mails)**
+* **Fuente del Estímulo:** Servidor de e-mail del usuario.
+* **Estímulo:** Llegada de un correo electrónico de viajes enviado por un remitente seguro (incluido en la whitelist).
+* **Artefacto:** Módulo de Escaneo y Procesamiento de Correo.
+* **Ambiente:** Operación normal en segundo plano.
+* **Respuesta:** El sistema lee el mensaje, aplica la lista de remitentes seguros (whitelist), extrae la información del viaje y agrega la reserva automáticamente al itinerario.
+* **Medida de Respuesta:** Se leen y agregan automáticamente al itinerario al menos el 95% de los correos de reservas válidos de la whitelist, ignorando los correos no relacionados sin generar errores.
+
+#### **QA-03c: Interoperabilidad con Redes Sociales**
+* **Fuente del Estímulo:** Usuario final desde la aplicación Web o Mobile.
+* **Estímulo:** El usuario solicita compartir su itinerario activo en sus redes sociales.
+* **Artefacto:** Módulo de Conexión con Redes Sociales.
+* **Ambiente:** Funcionamiento normal del sistema.
+* **Respuesta:** El sistema toma los datos del viaje, los adapta al formato que pide la red social y envía la información.
+* **Medida de Respuesta:** La publicación en redes sociales se realiza con éxito en menos de 2 segundos en el 99% de las solicitudes.
+
+#### **QA-03d: Integración con Agencia Preferida (Resolución de Problemas)**
+* **Fuente del Estímulo:** El usuario desde el panel de control.
+* **Estímulo:** El usuario solicita asistencia para resolver un problema o imprevisto con una reserva.
+* **Artefacto:** Módulo de Conexión con Agencia Preferida.
+* **Ambiente:** Funcionamiento normal del sistema.
+* **Respuesta:** El sistema envía los datos del itinerario afectado a la agencia preferida del usuario para facilitar una rápida resolución.
+* **Medida de Respuesta:** La información se transfiere a la agencia con éxito en menos de 2 segundos.
+
 #### **QA-07a: Escalabilidad - Picos Extremos por Disrupciones Masivas de Viaje**
 * **Fuente del Estímulo:** Usuarios activos (viajeros afectados).
 * **Estímulo:** Aumento repentino del 500 % en el volumen de consultas simultáneas debido a una interrupción masiva de viajes (ej. disrupciones climáticas o cancelación masiva de vuelos).
