@@ -100,7 +100,7 @@ graph TD
 ```
 
 - **Vista 2: Diagrama Estructural de Capas (Arquitectura Base)**
-Esta vista ilustra cómo se "abre la caja" del Sistema Trotamundos en 5 capas lógicas. La comunicación fluye principalmente de "arriba hacia abajo" (top-down), aislando a los clientes de la complejidad de la base de datos y de las integraciones con terceros, garantizando la Mantenibilidad (QA-05).
+Esta vista ilustra cómo se "abre la caja" del Sistema Trotamundos en 5 capas lógicas. La comunicación fluye de "arriba hacia abajo" (top-down) hasta llegar a la Capa de Lógica de Negocio, la cual actúa como orquestador central interactuando en paralelo con la Capa de Datos y la Capa de Integración. Este diseño aísla a los clientes de la complejidad de la persistencia y de los proveedores de terceros, garantizando la Mantenibilidad (QA-05).
 
 ```mermaid
 flowchart TD
@@ -160,7 +160,9 @@ flowchart TD
 
 - **Aislamiento de Capas:** Se establece una restricción arquitectónica donde la Capa de Presentación desconoce por completo la existencia de la base de datos o de las APIs de terceros. Todo el tráfico hacia el backend debe pasar obligatoriamente por la Capa de Servicios (API Gateway).
 - **División de Cargas:** Se decide separar la ejecución de tareas de usuario (sincrónicas) de las tareas de procesamiento en segundo plano (asincrónicas) dentro de la Capa de Negocio para proteger la latencia y la escalabilidad (QA-01 y QA-07).
-- **Independencia de Datos:** Se desacopla físicamente y lógicamente el almacenamiento de datos operacionales (OLTP) del almacenamiento analítico (OLAP), previniendo que las consultas pesadas de negocio degraden la disponibilidad del usuario final (CRN-03).
+- **Orquestación y Desacoplamiento Interno:** Se introduce una Cola de Mensajes dentro de la Capa de Negocio para separar la respuesta rápida al usuario del procesamiento pesado (workers asincrónicos), protegiendo la performance (QA-01).
+- **Consistencia Analítica:** Se define un proceso ETL unidireccional que alimenta el Data Warehouse (OLAP) a partir de la base operacional (OLTP), garantizando que las consultas pesadas no impacten el sistema en vivo (CRN-03).
+- **Independencia de Datos:** Se desacopla físicamente y lógicamente el almacenamiento de datos operacionales (OLTP) del almacenamiento analítico (OLAP).
 - **Documentación detallada:** Consultar el [ADR-001: Selección del Estilo Arquitectónico General y Patrón de Despliegue](../adrs/adr-001-estilo-arquitectonico.md) que define la elección de la arquitectura Cliente-Servidor Multi-Tier en Capas, estableciendo las reglas de aislamiento de capas, separación de procesamiento sincrónico/asincrónico y segregación de datos OLTP/OLAP.
 
 - - - 
