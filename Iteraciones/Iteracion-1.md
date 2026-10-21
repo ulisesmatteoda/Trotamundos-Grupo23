@@ -74,6 +74,7 @@ En este paso se generan las representaciones visuales de la arquitectura base de
 - **Vista 1: Diagrama de Contexto (Nivel 1)**
 Esta vista define los límites del sistema "Trotamundos" y expone todas sus interacciones con actores y sistemas externos, lo cual es crítico para visualizar el cumplimiento de los escenarios de Interoperabilidad (QA-03).
 
+```mermaid
 graph TD
     %% Estilos
     classDef usuario fill:#08427b,stroke:#052e56,stroke-width:2px,color:#fff;
@@ -96,10 +97,12 @@ graph TD
     System -- "Sincroniza estado de reservas\n[HTTPS/JSON]" --> Providers
     System -- "Deriva problemas y detalles\n[HTTPS/REST]" --> Agency
     System -- "Publica estados de viaje\n[OAuth2]" --> Social
+```
 
 - **Vista 2: Diagrama Estructural de Capas (Arquitectura Base)**
 Esta vista ilustra cómo se "abre la caja" del Sistema Trotamundos en 5 capas lógicas. La comunicación fluye principalmente de "arriba hacia abajo" (top-down), aislando a los clientes de la complejidad de la base de datos y de las integraciones con terceros, garantizando la Mantenibilidad (QA-05).
 
+```mermaid
 flowchart TD
     %% Estilos de las cajas
     classDef layer fill:#f9f9f9,stroke:#333,stroke-width:2px,color:#333;
@@ -146,6 +149,7 @@ flowchart TD
     Sync -->|Consultas| Adapters
     
     Adapters -->|Lectura/Escritura en vivo| OLTP
+```
 
 **Registro de Decisiones de Diseño Clave**
 - **Aislamiento de Capas:** Se establece una restricción arquitectónica donde la Capa de Presentación desconoce por completo la existencia de la base de datos o de las APIs de terceros. Todo el tráfico hacia el backend debe pasar obligatoriamente por la Capa de Servicios (API Gateway).
