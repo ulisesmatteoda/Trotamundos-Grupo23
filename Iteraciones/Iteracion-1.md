@@ -120,6 +120,9 @@ flowchart TD
     
     Adapters -->|Lectura/Escritura en vivo| OLTP
 ```
+**Registro de Decisiones de Diseño:**
+- Se establece una restricción arquitectónica estricta: las capas superiores solo pueden comunicarse con la capa inmediatamente inferior (Strict Layering), con excepción de la Capa de Lógica de Negocio que interactúa tanto con Datos como con Integración Externa.
+- La Capa de Presentación desconoce por completo la existencia de la base de datos o de las APIs de terceros; todo pasa por el API Gateway.
 
 - - - 
 
