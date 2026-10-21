@@ -104,6 +104,22 @@ Recopilar y procesar tendencias y datos de viajes para la ejecución de consulta
 * **Respuesta:** El sistema envía los datos del itinerario afectado a la agencia preferida del usuario para facilitar una rápida resolución.
 * **Medida de Respuesta:** La información se transfiere a la agencia con éxito en menos de 2 segundos.
 
+### **QA-05a: Evolucionabilidad - Integración de Nuevo Medio de Transporte**
+* **Fuente del Estímulo:** Equipo de desarrollo.
+* **Estímulo:** El negocio solicita agregar un nuevo tipo de transporte (ej. trenes o micros) al sistema de itinerarios.
+* **Artefacto:** Capa de Integración y Capa de Lógica de Negocio.
+* **Ambiente:** Tiempo de diseño y desarrollo.
+* **Respuesta:** El equipo extiende el modelo de datos base y crea un nuevo adaptador para el proveedor de trenes, reutilizando la arquitectura existente sin alterar ni reescribir el código que procesa los vuelos y hoteles.
+* **Medida de Respuesta:** La nueva funcionalidad se integra en menos de 2 sprints (o 4 semanas) de trabajo, con 0 (cero) modificaciones en el código central (Core) ya existente.
+
+### **QA-05b: Mantenibilidad - Actualización de API de Proveedor**
+* **Fuente del Estímulo:** Equipo de mantenimiento / desarrollo.
+* **Estímulo:** Un proveedor de correo o aerolínea (ej. Gmail o Iberia) cambia sus políticas de seguridad o formato de respuesta, requiriendo una actualización en el sistema.
+* **Artefacto:** Módulo de Adaptadores (Capa de Integración).
+* **Ambiente:** Tiempo de mantenimiento.
+* **Respuesta:** El desarrollador aísla el error y modifica únicamente el adaptador específico de ese proveedor, mientras el resto del sistema y los demás conectores siguen funcionando intactos.
+* **Medida de Respuesta:** El cambio se localiza en un único archivo/módulo y se implementa con éxito en menos de 2 días-persona de esfuerzo, superando el 100% de las pruebas de regresión.
+
 #### **QA-07a: Escalabilidad - Picos Extremos por Disrupciones Masivas de Viaje**
 * **Fuente del Estímulo:** Usuarios activos (viajeros afectados).
 * **Estímulo:** Aumento repentino del 500 % en el volumen de consultas simultáneas debido a una interrupción masiva de viajes (ej. disrupciones climáticas o cancelación masiva de vuelos).
