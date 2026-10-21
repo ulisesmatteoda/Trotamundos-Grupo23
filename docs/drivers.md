@@ -104,6 +104,38 @@ Recopilar y procesar tendencias y datos de viajes para la ejecución de consulta
 * **Respuesta:** El sistema envía los datos del itinerario afectado a la agencia preferida del usuario para facilitar una rápida resolución.
 * **Medida de Respuesta:** La información se transfiere a la agencia con éxito en menos de 2 segundos.
 
+#### **QA-04a: Seguridad - Acceso no autorizado a correos de usuarios**
+* **Fuente del Estímulo:** Atacante externo (sin credenciales válidas del usuario).
+* **Estímulo:** Intenta acceder a los correos de un usuario, o a los tokens de acceso a su proveedor de correo, a través de la API o del módulo de procesamiento.
+* **Artefacto:** Módulo de Procesamiento de Correo y almacén de credenciales/tokens de Trotamundos.
+* **Ambiente:** Normal.
+* **Respuesta:** El sistema deniega el acceso, registra el intento y genera una alerta al equipo de seguridad.
+* **Medida de Respuesta:** El 100% de los intentos no autorizados es bloqueado; el intento queda registrado y la alerta se emite en menos de 1 minuto.
+
+#### **QA-04b: Seguridad - Visualización de itinerarios compartidos**
+* **Fuente del Estímulo:** Usuario no designado por el dueño del itinerario.
+* **Estímulo:** Intenta visualizar un itinerario compartido (por enlace o desde una red social).
+* **Artefacto:** Módulo de Gestión de Itinerarios y control de acceso de Trotamundos.
+* **Ambiente:** Normal.
+* **Respuesta:** El sistema verifica la autorización, deniega la visualización y registra el intento.
+* **Medida de Respuesta:** 0 accesos a itinerarios por parte de personas no designadas; la denegación se produce en menos de 800 ms.
+
+#### **QA-04c: Seguridad - Revocación de acceso al correo**
+* **Fuente del Estímulo:** Usuario titular de la cuenta.
+* **Estímulo:** Revoca el permiso de acceso a su correo (o elimina su cuenta).
+* **Artefacto:** Módulo de Procesamiento de Correo y almacén de credenciales de Trotamundos.
+* **Ambiente:** Normal.
+* **Respuesta:** El sistema detiene el escaneo de ese correo, invalida y elimina los tokens almacenados, y deja de procesar nuevos mensajes.
+* **Medida de Respuesta:** No se lee ningún correo del usuario después de la revocación; los tokens quedan inválidos en menos de 1 minuto.
+
+#### **QA-04d: Seguridad - Protección de datos personales ante acceso a la infraestructura**
+* **Fuente del Estímulo:** Atacante con acceso al almacenamiento o a la red interna.
+* **Estímulo:** Intenta leer datos personales de usuarios (reservas, correos procesados) desde el almacenamiento o interceptando tráfico entre componentes.
+* **Artefacto:** Capa de persistencia y comunicaciones entre componentes de Trotamundos.
+* **Ambiente:** Normal.
+* **Respuesta:** Los datos personales permanecen ilegibles para el atacante.
+* **Medida de Respuesta:** El 100% de los datos personales está cifrado en reposo y en tránsito; ningún dato personal se recupera en texto plano.
+
 #### **QA-05a: Evolucionabilidad - Integración de Nuevo Medio de Transporte**
 * **Fuente del Estímulo:** Equipo de desarrollo.
 * **Estímulo:** El negocio solicita agregar un nuevo tipo de transporte (ej. trenes o micros) al sistema de itinerarios.
@@ -119,6 +151,38 @@ Recopilar y procesar tendencias y datos de viajes para la ejecución de consulta
 * **Ambiente:** Tiempo de mantenimiento.
 * **Respuesta:** El desarrollador aísla el error y modifica únicamente el adaptador específico de ese proveedor, mientras el resto del sistema y los demás conectores siguen funcionando intactos.
 * **Medida de Respuesta:** El cambio se localiza en un único archivo/módulo y se implementa con éxito en menos de 2 días-persona de esfuerzo, superando el 100% de las pruebas de regresión.
+
+#### **QA-06a: Usabilidad - Uso de capacidades nativas del móvil (GPS)**
+* **Fuente del Estímulo:** Viajero usuario de la aplicación móvil.
+* **Estímulo:** Consulta cómo llegar a una reserva de su viaje en curso (hotel, terminal, rentadora) estando en el destino.
+* **Artefacto:** Aplicación móvil de Trotamundos (capa de presentación).
+* **Ambiente:** Normal, con permiso de ubicación concedido.
+* **Respuesta:** El sistema obtiene la ubicación del dispositivo y muestra la posición de la reserva y la ruta para llegar.
+* **Medida de Respuesta:** El usuario llega a la información de ruta en un máximo de 2 toques desde el panel del viaje, y la ruta se muestra en menos de 3 segundos.
+
+#### **QA-06b: Usabilidad - Alta manual de una reserva**
+* **Fuente del Estímulo:** Usuario que usa la plataforma por primera vez.
+* **Estímulo:** Agrega manualmente una reserva a un viaje.
+* **Artefacto:** Interfaz de gestión de reservas de Trotamundos.
+* **Ambiente:** Normal.
+* **Respuesta:** El sistema guía el alta, valida los datos ingresados y asocia la reserva al viaje correspondiente.
+* **Medida de Respuesta:** El 90% de los usuarios nuevos completa el alta sin ayuda externa en menos de 2 minutos.
+
+#### **QA-06c: Usabilidad - Resolución de problemas durante una disrupción**
+* **Fuente del Estímulo:** Viajero afectado por una disrupción (vuelo cancelado, demora importante).
+* **Estímulo:** Necesita contactar a su agencia de viajes preferida para resolver el problema.
+* **Artefacto:** Interfaz del itinerario y módulo de integración con la agencia de viajes de Trotamundos.
+* **Ambiente:** Pico de tráfico por disrupción masiva.
+* **Respuesta:** El sistema identifica la reserva afectada y deriva al usuario a su agencia con el contexto del problema ya cargado.
+* **Medida de Respuesta:** El contacto con la agencia se inicia en un máximo de **3 toques** desde el panel del viaje afectado, transfiriendo el **100% de los datos de la reserva** sin reingreso manual, y con un tiempo de carga de la interfaz menor a **3 segundos** durante el pico de tráfico.
+
+#### **QA-06d: Usabilidad (Internacionalización) - Uso desde otra región**
+* **Fuente del Estímulo:** Usuario ubicado en otro país o región.
+* **Estímulo:** Accede a la plataforma con un idioma, moneda, formato de fecha y zona horaria distintos a los de origen.
+* **Artefacto:** Capa de presentación y servicios regionales de Trotamundos.
+* **Ambiente:** Normal.
+* **Respuesta:** El sistema presenta la interfaz en el idioma del usuario, con formatos locales y horarios expresados en la zona horaria del lugar de cada reserva.
+* **Medida de Respuesta:** El 100% de los textos y formatos de las regiones soportadas está localizado, sin cambios en el código de la lógica de negocio para cada región, y el tiempo de respuesta web se mantiene en 800 ms.
 
 #### **QA-07a: Escalabilidad - Picos Extremos por Disrupciones Masivas de Viaje**
 * **Fuente del Estímulo:** Usuarios activos (viajeros afectados).
