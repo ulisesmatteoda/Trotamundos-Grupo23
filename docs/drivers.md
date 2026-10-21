@@ -96,7 +96,7 @@ Recopilar y procesar tendencias y datos de viajes para la ejecución de consulta
 * **Respuesta:** El sistema toma los datos del viaje, los adapta al formato que pide la red social y envía la información.
 * **Medida de Respuesta:** La publicación en redes sociales se realiza con éxito en menos de 2 segundos en el 99% de las solicitudes.
 
-#### **QA-03d: Integración - Agencia Preferida (Resolución de Problemas)**
+#### **QA-03d: Interoperabilidad - Agencia Preferida (Resolución de Problemas)**
 * **Fuente del Estímulo:** El usuario desde el panel de control.
 * **Estímulo:** El usuario solicita asistencia para resolver un problema o imprevisto con una reserva.
 * **Artefacto:** Módulo de Conexión con Agencia Preferida.
