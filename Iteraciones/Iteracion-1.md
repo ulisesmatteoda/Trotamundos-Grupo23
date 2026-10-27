@@ -108,38 +108,56 @@ Esta vista ilustra cómo se "abre la caja" del Sistema Trotamundos en 5 capas l�
 
 ```mermaid
 flowchart TD
-    %% Estilos de las cajas
-    classDef layer fill:#f9f9f9,stroke:#333,stroke-width:2px,color:#333;
-    classDef client fill:#d4e6f1,stroke:#2980b9,stroke-width:2px,color:#000;
-    classDef core fill:#d1f2eb,stroke:#1abc9c,stroke-width:2px,color:#000;
-    classDef data fill:#fadbd8,stroke:#c0392b,stroke-width:2px,color:#000;
-    classDef external fill:#fcf3cf,stroke:#f1c40f,stroke-width:2px,color:#000;
+    %% ==========================================
+    %% DEFINICIÓN DE ESTILOS DE COMPONENTES (C&C)
+    %% ==========================================
+    classDef clientComp fill:#d4e6f1,stroke:#2980b9,stroke-width:2px,color:#000;
+    classDef serviceComp fill:#d1f2eb,stroke:#1abc9c,stroke-width:2px,color:#000;
+    classDef dataComp fill:#fadbd8,stroke:#c0392b,stroke-width:2px,color:#000;
+    classDef externalComp fill:#fcf3cf,stroke:#f1c40f,stroke-width:2px,color:#000;
+    classDef keyBox fill:#ffffff,stroke:#333333,stroke-width:1px,stroke-dasharray: 5 5,color:#000;
 
-    %% Nodos principales
+    %% ==========================================
+    %% 1. CAPA DE PRESENTACIÓN
+    %% ==========================================
     subgraph CapaPresentacion [1. Capa de Presentación]
-        Web[Aplicación Web SPA]:::client
-        App[App Móvil iOS/Android]:::client
+        Web[Aplicación Web SPA]:::clientComp
+        App[App Móvil iOS/Android]:::clientComp
     end
 
+    %% ==========================================
+    %% 2. CAPA DE SERVICIOS Y API
+    %% ==========================================
     subgraph CapaAPI [2. Capa de Servicios y API]
-        Gateway[API Gateway / Seguridad y Ruteo]:::core
+        Gateway[API Gateway / Seguridad y Ruteo]:::serviceComp
     end
 
+    %% ==========================================
+    %% 3. CAPA DE LÓGICA DE NEGOCIO
+    %% ==========================================
     subgraph CapaNegocio [3. Capa de Lógica de Negocio]
-        Sync[Gestión de Viajes Sincrónico]:::core
-        Async[Workers Asincrónicos / Background]:::core
+        Sync[Gestión de Viajes Sincrónico]:::serviceComp
+        Async[Workers Asincrónicos / Background]:::serviceComp
     end
 
+    %% ==========================================
+    %% 4. CAPA DE INTEGRACIÓN EXTERNA
+    %% ==========================================
     subgraph CapaIntegracion [4. Capa de Integración Externa]
-        Adapters[Adaptadores / Anti-Corruption Layer]:::external
+        Adapters[Adaptadores / Anti-Corruption Layer]:::externalComp
     end
 
+    %% ==========================================
+    %% 5. CAPA DE DATOS
+    %% ==========================================
     subgraph CapaDatos [5. Capa de Datos]
-        OLTP[(Base de Datos Operacional - OLTP)]:::data
-        OLAP[(Data Warehouse Analítico - OLAP)]:::data
+        OLTP[(Base de Datos Operacional - OLTP)]:::dataComp
+        OLAP[(Data Warehouse Analítico - OLAP)]:::dataComp
     end
 
-    %% Relaciones y flujo de datos
+    %% ==========================================
+    %% RELACIONES Y FLUSO DE DATOS (CONECTORES)
+    %% ==========================================
     Web -->|Peticiones HTTP| Gateway
     App -->|Peticiones HTTP| Gateway
     
@@ -153,6 +171,21 @@ flowchart TD
     Sync -->|Consultas| Adapters
     
     Adapters -->|Lectura/Escritura en vivo| OLTP
+
+    %% ==========================================
+    %% LEYENDA RIGUROSA C&C (SEGUN LIBRO BASS ET AL.)
+    %% ==========================================
+    subgraph Leyenda ["LEYENDA / KEY (Vista de Componentes y Conectores)"]
+        direction LR
+        K_Client[Client Component]:::clientComp
+        K_Service[Service Component]:::serviceComp
+        K_Data[(Data Store Component)]:::dataComp
+        K_Ext[External Adapter Component]:::externalComp
+        
+        K_Conn1[==> Conector Sincrónico / Invocación Directa]
+        K_Conn2[-.-> Conector Asincrónico / Diferido]
+    end
+    class Leyenda keyBox;
 ```
 **Registro de Decisiones de Diseño Clave:**
 
