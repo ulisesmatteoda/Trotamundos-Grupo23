@@ -99,8 +99,13 @@ graph TD
     System -- "Publica estados de viaje\n[OAuth2]" --> Social
 ```
 
-- **Vista 2: Diagrama Estructural de Capas (Arquitectura Base)**
+- **Vista 2: Diagrama de Componentes y Conectores (Arquitectura Base)**
 Esta vista ilustra cómo se "abre la caja" del Sistema Trotamundos en 5 capas lógicas. La comunicación fluye principalmente de "arriba hacia abajo" (top-down), aislando a los clientes de la complejidad de la base de datos y de las integraciones con terceros, garantizando la Mantenibilidad (QA-05).
+
+Esta vista ilustra cómo se "abre la caja" del Sistema Trotamundos en 5 capas lógicas. La comunicación fluye principalmente de "arriba hacia abajo" (*top-down*), organizando la estructura mediante dos reglas de dependencia distintas:   
+
+1. **Capas Estrictas (*Strict Layering*):** Las capas superiores (**1. Capa de Presentación** y **2. Capa de Servicios/API**) operan bajo una regla estricta. La Capa de Presentación se comunica únicamente con el API Gateway, aislando a los clientes de la complejidad interna del backend, la base de datos y los servicios de terceros, lo que garantiza la mantenibilidad y evolucionabilidad de la interfaz (**QA-05**).   
+2. **Capa de Negocio como Orquestador Central (*Layer Bridging*):** A partir de la **3. Capa de Lógica de Negocio**, la regla de desacoplamiento se flexibiliza. Esta capa actúa como el orquestador del sistema e interactúa directamente en paralelo con dos capas inferiores distintas: la **4. Capa de Integración Externa** (para traducir las comunicaciones externas) y la **5. Capa de Datos** (para persistir los cambios).
 
 ```mermaid
 flowchart TD
@@ -164,15 +169,21 @@ flowchart TD
 Con las vistas arquitectónicas definidas, se procede a evaluar cómo las decisiones tomadas en esta iteración abordan los requerimientos críticos (drivers) establecidos para "Trotamundos".
 
 
-| Driver (Requerimiento) | Decisión Arquitectónica que lo aborda | Estado al final de la Iteración 1 |
+| Driver (Requerimiento) | Decisión arquitectónica que lo aborda | Estado al final de la Iteración 1 |
 | :--- | :--- | :--- |
-| **UC-01 y UC-02** (Gestión de viajes manual y automática) | División de responsabilidades en 5 capas lógicas (Presentación, API, Negocio, Integración, Datos). | **Parcialmente Abordado:** Se definió la estructura de alto nivel donde residirán, pero falta diseñar su lógica interna en la Iteración 2. |
-| **QA-01a y CRN-02** (Performance asincrónica y escaneo de correos) | Separación del Módulo de Gestión (Sincrónico) y los Workers Asincrónicos en la Capa de Negocio. | **Abordado.** |
-| **QA-03a, b, c, d** (Interoperabilidad general) | Creación de una Capa de Integración Externa dedicada con patrón de Adaptadores (Anti-Corruption Layer). | **Abordado.** |
-| **QA-05a, QA-05b** (Evolucionabilidad y Mantenibilidad) | Patrón de Capas Estrictas (Strict Layering) y aislamiento de dependencias en la Capa de Integración. | **Abordado.** |
-| **CRN-03 y UC-03** (Separación de cargas de trabajo y Analítica) | División de la Capa de Datos en bases operacionales (OLTP) y analíticas (OLAP). | **Abordado.** |
-| **QA-01b, QA-01c** (Latencia Web y FCP Mobile) | Delegación visual a la Capa de Presentación (SPA/Mobile) y canalización a través de un API Gateway. | **Parcialmente Abordado:** La estructura soporta baja latencia, pero requiere definir componentes concretos de frontend y red. |
-| **QA-02, QA-07a, QA-07b** (Disponibilidad y Escalabilidad ante picos) | Elección de despliegue físico Cliente-Servidor Multi-Tier. | **No Abordado Completamente:** Requiere una iteración específica de infraestructura (ej. Iteración 4) para definir balanceadores, instancias y redundancia. |
+| **CRN-01** (Estructura general) | Estilo en capas sobre despliegue Cliente-Servidor Multi-Tier (ADR-001) | **Abordado.** |
+| **CON-01** (Multiplataforma) | Clientes Web y Móvil aislados detrás de un API Gateway (ADR-001) | **Abordado.** |
+| **UC-01 y UC-02** (Gestión automática y manual) | Reparto de responsabilidades en 5 capas, con Negocio como orquestador central | **Parcialmente abordado:** estructura de alto nivel definida; falta diseñar las interfaces y la lógica interna (Iteración 2). |
+| **QA-01a y CRN-02** (Performance asincrónica y escaneo de correos) | Cola de mensajes y workers separados del módulo sincrónico (ADR-002) | **Parcialmente abordado:** falta elegir el broker, definir reintentos e idempotencia, y dimensionar los workers para cumplir los 5 minutos. |
+| **QA-03a, b, c, d** (Interoperabilidad) | Capa de Integración con adaptadores (Anti-Corruption Layer) gestionada por Negocio | **Parcialmente abordado:** cubre correo, aerolíneas y hoteles; faltan redes sociales y agencia preferida. |
+| **QA-05** (Evolvability y Mantenibilidad) | Capas con aislamiento de dependencias externas; adaptadores sin acceso a datos | **Parcialmente abordado:** falta definir el mecanismo de extensión para nuevos medios de transporte. |
+| **CRN-03 y UC-03** (Separación de cargas y analítica) | Bases OLTP/OLAP separadas con proceso ETL (ADR-003) | **Parcialmente abordado:** falta definir frecuencia y mecanismo del ETL. |
+| **QA-01b, QA-01c** (Latencia web y FCP móvil) | Clientes separados y API Gateway | **Parcialmente abordado:** faltan componentes concretos de frontend y red. |
+| **QA-07** (Escalabilidad) | Despliegue Multi-Tier y nivelación de carga con la cola | **Parcialmente abordado:** la estructura permite escalar horizontalmente; faltan balanceo, caché y estrategia de datos. |
+| **QA-02** (Disponibilidad) | Ausencia de punto único de falla a nivel de tiers (Gateway replicado) | **Parcialmente abordado:** faltan réplicas, failover y health checks, a definir en una iteración de infraestructura. |
+| **QA-04** (Seguridad) | — | **No tratado.** Objetivo propuesto para la Iteración 2. |
+| **Usabilidad e Internacionalización** | — | **No tratado.** |
+| **Módulo avanzado (Opción A o B)** | — | **No tratado.** |
 
 
 **Conclusión de la Iteración 1:**
