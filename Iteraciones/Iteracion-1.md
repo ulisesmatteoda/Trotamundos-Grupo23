@@ -25,14 +25,43 @@ Por lo tanto, el elemento seleccionado para refinar es el **Sistema Trotamundos 
 
 ## Paso 4: Elegir los conceptos de diseño que satisfacen los drivers seleccionados
 
-Para esta primera iteración, la decisión arquitectónica principal es adoptar un estilo híbrido: Arquitectura Lógica de Capas (Layers) desplegada sobre un modelo físico Cliente-Servidor Multi-Tier (N-Tier). Esta selección permite establecer una estructura general robusta para el sistema greenfield.
+## Opciones Consideradas
 
-**Justificación de la decisión:**
+1. Monolito Tradicional de 2 Capas (Cliente-Servidor 2-Tier).
+2. Arquitectura Orientada a Microservicios Puros.
+3. Cliente-Servidor Multi-Tier con Backend Desacoplado en Capas (N-Tier).
 
-- **Soporte funcional y modularidad (CRN-01 y CON-03)**: El patrón de Layers organiza el código separando estrictamente la interfaz de usuario, la lógica de negocio, la integración de APIs externas y el acceso a datos. Esto permite un desarrollo guiado por especificaciones ordenado y facilita la construcción del prototipo por etapas.
-- **Soporte multiplataforma (CON-01)**: El modelo Cliente-Servidor aísla completamente las aplicaciones cliente (Web y Móvil) de la infraestructura central, comunicándose únicamente a través de APIs estándar.
-- **Escalabilidad y Disponibilidad (QA-07 y QA-02)**: El patrón Multi-Tier permite que cada capa lógica se despliegue en clústeres de servidores físicos independientes. Ante picos masivos de tráfico, la capa de Lógica de Negocio (Backend) puede escalar horizontalmente sin afectar a los clientes ni a los servidores de bases de datos.
-- **Desacoplamiento asincrónico (CRN-02 y QA-01a)**: Dentro de la capa de lógica de negocio, se aislará el procesamiento de correos mediante sub-módulos de Workers Asincrónicos (procesamiento en segundo plano), garantizando que los hilos de respuesta web no se bloqueen.
+## Decisión Tomada
+
+Se elige la **Opción 3: Cliente-Servidor Multi-Tier con Backend Desacoplado en Capas**, porque permite separar conceptualmente las responsabilidades del sistema en capas lógicas de alta cohesión (Presentación, API/Seguridad, Lógica de Negocio, Adaptadores de Integración y Persistencia) y distribuirlas físicamente en niveles (*tiers*) independientes en la nube.
+
+### Justificación
+
+* Aísla el canal de clientes (Móvil y Web) del backend central.
+* Independiza las cargas de trabajo mediante trabajadores asincrónicos en segundo plano (*workers*) para el escaneo de correos (UC-01).
+* Garantiza la separación entre la base operacional (OLTP) y el repositorio de tendencias analíticas (OLAP) demandado por CRN-03 y UC-03.
+
+## Consecuencias
+
+### Pros
+* Satisface CRN-01 estableciendo un marco de trabajo modular, claro y mantenible (QA-05).
+* Permite el escalado horizontal (*scale-out*) del backend detrás de un balanceador de carga o API Gateway para absorber picos masivos (QA-07).
+* Facilita la aplicación del patrón *Adapter/Anti-Corruption Layer* en la Capa de Integración para conectar proveedores externos de correo y aerolíneas (QA-03).
+
+### Contras (y Mitigaciones)
+* Introduce una leve sobrecarga de latencia (*Indirección*) por el paso entre capas lógicas y balanceadores. *Mitigación: Se optimizarán los endpoints REST/JSON y se mantendrá una estricta gestión de asincronía.*
+
+## Evaluación de Alternativas Descartadas
+
+* **Opción 1: Monolito Tradicional de 2 Capas:**
+  * *Bueno:* Extremadamente simple de implementar en etapas iniciales.
+  * *Malo:* La base de datos centralizada se convierte en un punto único de falla (SPOF) y en un cuello de botella infranqueable ante los picos de tráfico (QA-07). Las consultas analíticas del equipo de datos (UC-03) degradarían directamente las respuestas a los viajeros en vivo.
+* **Opción 2: Arquitectura Orientada a Microservicios Puros:**
+  * *Bueno:* Permite el escalado independiente y autónomo de cada pequeño componente.
+  * *Malo:* Complejidad operacional excesiva para la primera iteración de un sistema *greenfield*, aumentando el riesgo de fallas de red, latencia de indirección e inconsistencia de datos.
+
+## Notas de Trazabilidad
+* Esta decisión da soporte directo al Diagrama de Contenedores (C4 Nivel 2) presentado en el Paso 6 de la Iteración 1.
 
 - - - 
 
@@ -192,7 +221,6 @@ flowchart TD
 - **Aislamiento de Capas:** Se establece una restricción arquitectónica donde la Capa de Presentación desconoce por completo la existencia de la base de datos o de las APIs de terceros. Todo el tráfico hacia el backend debe pasar obligatoriamente por la Capa de Servicios (API Gateway).
 - **División de Cargas:** Se decide separar la ejecución de tareas de usuario (sincrónicas) de las tareas de procesamiento en segundo plano (asincrónicas) dentro de la Capa de Negocio para proteger la latencia y la escalabilidad (QA-01 y QA-07).
 - **Independencia de Datos:** Se desacopla físicamente y lógicamente el almacenamiento de datos operacionales (OLTP) del almacenamiento analítico (OLAP), previniendo que las consultas pesadas de negocio degraden la disponibilidad del usuario final (CRN-03).
-- **Documentación detallada:** Consultar el [ADR-001: Selección del Estilo Arquitectónico General y Patrón de Despliegue](../adrs/adr-001-estilo-arquitectonico.md) que define la elección de la arquitectura Cliente-Servidor Multi-Tier en Capas, estableciendo las reglas de aislamiento de capas, separación de procesamiento sincrónico/asincrónico y segregación de datos OLTP/OLAP.
 
 - - - 
 
