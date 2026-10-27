@@ -99,9 +99,8 @@ A partir del estilo de Capas (Layers) y Cliente-Servidor Multi-Tier seleccionado
 
 ## Paso 6: Bosquejar vistas y registrar decisiones de diseño
 En este paso se generan las representaciones visuales de la arquitectura base definida para Trotamundos y se formalizan las restricciones de diseño. Para esta iteración inicial, se proponen dos vistas fundamentales: la Vista de Contexto y la Vista Estructural de Capas.
-
-- **Vista 1: Diagrama de Contexto (Nivel 1)**
-Esta vista define los límites del sistema "Trotamundos" y expone todas sus interacciones con actores y sistemas externos, lo cual es crítico para visualizar el cumplimiento de los escenarios de Interoperabilidad (QA-03).
+*   **Vista 1: Diagrama de Contexto (Nivel 1)** 
+Esta vista define los límites del sistema "Trotamundos" y expone todas sus interacciones con actores y sistemas externos, lo cual es crítico para visualizar el cumplimiento de los escenarios de Interoperabilidad (QA-03)[cite: 3].
 
 ```mermaid
 graph TD
@@ -109,6 +108,7 @@ graph TD
     classDef usuario fill:#08427b,stroke:#052e56,stroke-width:2px,color:#fff;
     classDef sistema fill:#1168bd,stroke:#0b4884,stroke-width:2px,color:#fff;
     classDef externo fill:#999999,stroke:#666666,stroke-width:2px,color:#fff;
+    classDef keyBox fill:#ffffff,stroke:#333333,stroke-width:1px,stroke-dasharray: 5 5,color:#000;
 
     %% Nodos
     User((Viajero\nApp Web/Mobile)):::usuario
@@ -126,7 +126,15 @@ graph TD
     System -- "Sincroniza estado de reservas\n[HTTPS/JSON]" --> Providers
     System -- "Deriva problemas y detalles\n[HTTPS/REST]" --> Agency
     System -- "Publica estados de viaje\n[OAuth2]" --> Social
-```
+
+    %% Leyenda
+    subgraph Leyenda ["LEYENDA / KEY"]
+        direction LR
+        L_User((Actor\nUsuario)):::usuario
+        L_System[Sistema\nPrincipal]:::sistema
+        L_Ext[Sistema\nExterno]:::externo
+    end
+    class Leyenda keyBox;
 
 - **Vista 2: Diagrama de Componentes y Conectores (Arquitectura Base)**
 
