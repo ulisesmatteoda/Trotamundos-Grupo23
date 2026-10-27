@@ -142,56 +142,84 @@ Ilustra cómo se abre la caja del sistema en 5 capas lógicas. La comunicación 
 
 ```mermaid
 flowchart TD
-    classDef client fill:#d4e6f1,stroke:#2980b9,stroke-width:2px,color:#000;
-    classDef core fill:#d1f2eb,stroke:#1abc9c,stroke-width:2px,color:#000;
-    classDef data fill:#fadbd8,stroke:#c0392b,stroke-width:2px,color:#000;
-    classDef external fill:#fcf3cf,stroke:#f1c40f,stroke-width:2px,color:#000;
+    %% ==========================================
+    %% DEFINICIÓN DE ESTILOS DE COMPONENTES (C&C)
+    %% ==========================================
+    classDef clientComp fill:#d4e6f1,stroke:#2980b9,stroke-width:2px,color:#000;
+    classDef serviceComp fill:#d1f2eb,stroke:#1abc9c,stroke-width:2px,color:#000;
+    classDef dataComp fill:#fadbd8,stroke:#c0392b,stroke-width:2px,color:#000;
+    classDef externalComp fill:#fcf3cf,stroke:#f1c40f,stroke-width:2px,color:#000;
+    classDef keyBox fill:#ffffff,stroke:#333333,stroke-width:1px,stroke-dasharray: 5 5,color:#000;
 
-    subgraph CapaPresentacion ["1. Capa de Presentación"]
-        Web("Aplicación Web SPA"):::client
-        App("App Móvil iOS/Android"):::client
+    %% ==========================================
+    %% 1. CAPA DE PRESENTACIÓN
+    %% ==========================================
+    subgraph CapaPresentacion [1. Capa de Presentación]
+        Web[Aplicación Web SPA]:::clientComp
+        App[App Móvil iOS/Android]:::clientComp
     end
 
-    subgraph CapaAPI ["2. Capa de Servicios y API"]
-        Gateway("API Gateway (replicado)"):::core
+    %% ==========================================
+    %% 2. CAPA DE SERVICIOS Y API
+    %% ==========================================
+    subgraph CapaAPI [2. Capa de Servicios y API]
+        Gateway[API Gateway / Seguridad y Ruteo]:::serviceComp
     end
 
-    subgraph CapaNegocio ["3. Capa de Lógica de Negocio"]
-        Sync("Gestión de Viajes - Sincrónico"):::core
-        Queue>Cola de mensajes]:::core
-        Async("Workers Asincrónicos"):::core
-
-        Sync -- "encola tareas" --> Queue
-        Queue --> Async
+    %% ==========================================
+    %% 3. CAPA DE LÓGICA DE NEGOCIO
+    %% ==========================================
+    subgraph CapaNegocio [3. Capa de Lógica de Negocio]
+        Sync[Gestión de Viajes Sincrónico]:::serviceComp
+        Async[Workers Asincrónicos / Background]:::serviceComp
     end
 
-    subgraph BottomLayers [" "]
-        style BottomLayers fill:none,stroke:none
-
-        subgraph CapaDatos ["5. Capa de Datos"]
-            OLTP[("OLTP")]:::data
-            ETL("Proceso ETL"):::data
-            OLAP[("Data Warehouse OLAP")]:::data
-
-            OLTP -.-> ETL
-            ETL -.-> OLAP
-        end
-
-        subgraph CapaIntegracion ["4. Capa de Integración Externa"]
-            Adapters("Adaptadores / ACL"):::external
-        end
+    %% ==========================================
+    %% 4. CAPA DE INTEGRACIÓN EXTERNA
+    %% ==========================================
+    subgraph CapaIntegracion [4. Capa de Integración Externa]
+        Adapters[Adaptadores / Anti-Corruption Layer]:::externalComp
     end
 
-    Web --> Gateway
-    App --> Gateway
+    %% ==========================================
+    %% 5. CAPA DE DATOS
+    %% ==========================================
+    subgraph CapaDatos [5. Capa de Datos]
+        OLTP[(Base de Datos Operacional - OLTP)]:::dataComp
+        OLAP[(Data Warehouse Analítico - OLAP)]:::dataComp
+    end
 
-    Gateway --> Sync
+    %% ==========================================
+    %% RELACIONES Y FLUSO DE DATOS (CONECTORES)
+    %% ==========================================
+    Web -->|Peticiones HTTP| Gateway
+    App -->|Peticiones HTTP| Gateway
+    
+    Gateway -->|Enrutamiento Interno| Sync
+    Gateway -->|Enrutamiento Interno| Async
+    
+    Sync -->|Lectura/Escritura en vivo| OLTP
+    Sync -.->|Volcado diferido| OLAP
+    
+    Async -->|Consultas y comandos| Adapters
+    Sync -->|Consultas| Adapters
+    
+    Adapters -->|Lectura/Escritura en vivo| OLTP
 
-    Sync --> Adapters
-    Sync --> OLTP
-
-    Async --> Adapters
-    Async -- "persiste datos normalizados" --> OLTP
+    %% ==========================================
+    %% LEYENDA RIGUROSA C&C (SEGUN LIBRO BASS ET AL.)
+    %% ==========================================
+    subgraph Leyenda ["LEYENDA / KEY (Vista de Componentes y Conectores)"]
+        direction LR
+        K_Client[Client Component]:::clientComp
+        K_Service[Service Component]:::serviceComp
+        K_Data[(Data Store Component)]:::dataComp
+        K_Ext[External Adapter Component]:::externalComp
+        
+        K_Conn1[==> Conector Sincrónico / Invocación Directa]
+        K_Conn2[-.-> Conector Asincrónico / Diferido]
+    end
+    class Leyenda keyBox;
 ```
 
 ### Registro de decisiones de diseño clave
