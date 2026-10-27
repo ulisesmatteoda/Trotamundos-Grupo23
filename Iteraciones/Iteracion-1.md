@@ -135,6 +135,7 @@ graph TD
         L_Ext[Sistema\nExterno]:::externo
     end
     class Leyenda keyBox;
+```
 
 - **Vista 2: Diagrama de Componentes y Conectores (Arquitectura Base)**
 
