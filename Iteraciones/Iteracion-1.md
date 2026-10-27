@@ -241,7 +241,7 @@ Con las vistas arquitectónicas definidas, se procede a evaluar cómo las decisi
 | **QA-01b, QA-01c** (Latencia web y FCP móvil) | Clientes separados y API Gateway | **Parcialmente abordado:** faltan componentes concretos de frontend y red. |
 | **QA-07** (Escalabilidad) | Despliegue Multi-Tier y nivelación de carga con la cola | **Parcialmente abordado:** la estructura permite escalar horizontalmente; faltan balanceo, caché y estrategia de datos. |
 | **QA-02** (Disponibilidad) | Ausencia de punto único de falla a nivel de tiers (Gateway replicado) | **Parcialmente abordado:** faltan réplicas, failover y health checks, a definir en una iteración de infraestructura. |
-| **QA-04** (Seguridad) | — | **No tratado.** Objetivo propuesto para la Iteración 2. |
+| **QA-04** (Seguridad) | — | **Tratado parcialmente.** Objetivo propuesto para futuras iteraciones. |
 | **Usabilidad e Internacionalización** | — | **No tratado.** |
 | **Módulo avanzado (Opción A o B)** | — | **No tratado.** |
 
