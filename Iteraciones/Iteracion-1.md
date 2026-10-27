@@ -100,7 +100,6 @@ graph TD
 ```
 
 - **Vista 2: Diagrama de Componentes y Conectores (Arquitectura Base)**
-Esta vista ilustra cómo se "abre la caja" del Sistema Trotamundos en 5 capas lógicas. La comunicación fluye principalmente de "arriba hacia abajo" (top-down), aislando a los clientes de la complejidad de la base de datos y de las integraciones con terceros, garantizando la Mantenibilidad (QA-05).
 
 Esta vista ilustra cómo se "abre la caja" del Sistema Trotamundos en 5 capas lógicas. La comunicación fluye principalmente de "arriba hacia abajo" (*top-down*), organizando la estructura mediante dos reglas de dependencia distintas:   
 
