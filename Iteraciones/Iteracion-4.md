@@ -119,3 +119,57 @@ graph TD
         L3[Amarillo: Recurso/Bundles Idioma]:::resourceModule
     end
     class LeyendaModulos keyBox;
+
+### Vista 2: Vista C&C (Mecanismo de Caché y Entrega en el Borde)
+Esta vista modela la interacción en tiempo de ejecución entre el cliente, la infraestructura de borde (CDN), el API Gateway, la capa de caché distribuida en memoria (Redis) y los servicios del backend, garantizando tiempos de respuesta de baja latencia y reduciendo la carga de lectura sobre la base de datos operacional.
+
+```mermaid
+graph TD
+    classDef client fill:#f8d7da,stroke:#dc3545,stroke-width:2px,color:#000000;
+    classDef edge fill:#e2d9f3,stroke:#6f42c1,stroke-width:2px,color:#000000;
+    classDef app fill:#d1f2eb,stroke:#1abc9c,stroke-width:2px,color:#000000;
+    classDef data fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#000000;
+    classDef keyBox fill:#ffffff,stroke:#333333,stroke-width:1px,stroke-dasharray: 5 5,color:#000000;
+
+    subgraph Cliente["Capa de Presentación (Frontend)"]
+        UI["Cliente Web / App Móvil"]:::client
+        I18nEngine["i18n & Timezone Provider (Client)"]:::client
+    end
+
+    subgraph Borde["Capa Edge & Enrutamiento"]
+        CDN["Content Delivery Network (CDN)"]:::edge
+        Gateway["API Gateway / BFF"]:::edge
+    end
+
+    subgraph Aplicacion["Capa de Aplicación & Caché"]
+        ViajeService["ViajeService (Cache-Aware)"]:::app
+        Redis[("Redis In-Memory Cache")]:::app
+    end
+
+    subgraph Persistencia["Capa de Datos Operacional"]
+        PostgrePrimary[("PostgreSQL Master (OLTP)")]:::data
+    end
+
+    UI -->|"1. Descarga Assets / Bundles i18n JSON"| CDN
+    UI -->|"2. Solicita Itinerario (Headers: Accept-Language, TZ)"| Gateway
+    Gateway -->|"3. Reenvía Petición"| ViajeService
+    
+    ViajeService -->|"4. Consulta Key (Cache Hit?)"| Redis
+    Redis -.->|"5a. Cache Hit (Retorna JSON UTC)"| ViajeService
+    
+    ViajeService -->|"5b. Cache Miss (Lee DB)"| PostgrePrimary
+    PostgrePrimary -.->|"6. Retorna Datos Persistidos"| ViajeService
+    ViajeService -.->|"7. Actualiza Redis (TTL)"| Redis
+    
+    ViajeService -->|"8. Responde JSON en UTC"| UI
+    UI -->|"9. Parsea e Interpreta Localización & Zonas Horarias"| I18nEngine
+
+    subgraph Leyenda ["LEYENDA / VISTA C&C"]
+        direction LR
+        L1[Rojo: Cliente & i18n Local]:::client
+        L2[Púrpura: CDN & API Gateway]:::edge
+        L3[Verde Agua: Backend & Redis Cache]:::app
+        L4[Verde: DB Operacional]:::data
+    end
+    class Leyenda keyBox;
+
