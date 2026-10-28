@@ -5,6 +5,7 @@ import { ViajeService } from "../domain/ViajeService";
 import { extraerDatosViaje } from "../integration/email/ParserCorreoReserva";
 import { eventBus } from "../messaging/EventBus";
 import { COLA_CORREOS, NuevoMailReservaEvent } from "../messaging/colas";
+import { AuditoriaSeguridad } from "../security/AuditoriaSeguridad";
 
 function esEvento(e: any): e is NuevoMailReservaEvent {
   return e?.tipo === "NuevoMailReservaEvent" && typeof e.correlationId === "string" && typeof e.correo?.cuerpo === "string";
@@ -17,6 +18,10 @@ export const ItinerarioEmailConsumer = {
     const inicio = Date.now();
 
     const r = await ViajeService.procesarReservaMail(correo.casilla, correo.remitente, () => extraerDatosViaje(correo));
+    if (r.resultado === "CASILLA_NO_CONECTADA") {
+      // QA-04c: llegó un correo de una casilla sin autorización vigente (p. ej. revocada); no se leyó.
+      await AuditoriaSeguridad.registrar("CORREO_DE_CASILLA_NO_CONECTADA", { recurso: correo.casilla, detalle: { correlationId } });
+    }
 
     const demoraMs = Date.now() - new Date(publicadoEn).getTime();
     console.log(

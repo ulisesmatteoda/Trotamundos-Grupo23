@@ -2,6 +2,7 @@
 // Ninguna ruta protegida llega a la Lógica de Negocio sin una sesión válida.
 import { NextFunction, Request, Response } from "express";
 import { AuthService, Sesion } from "../security/AuthService";
+import { AuditoriaSeguridad } from "../security/AuditoriaSeguridad";
 import { ErrorDominio } from "../domain/errores";
 
 export function requerirJwt(req: Request, res: Response, next: NextFunction): void {
@@ -14,7 +15,8 @@ export function requerirJwt(req: Request, res: Response, next: NextFunction): vo
     res.locals.sesion = AuthService.validar(token);
     next();
   } catch (err) {
-    next(err);
+    // Un token presente pero inválido (firma adulterada, vencido) es un evento de seguridad (QA-04a).
+    AuditoriaSeguridad.registrar("TOKEN_INVALIDO", { recurso: `${req.method} ${req.originalUrl}`, ip: req.ip }).finally(() => next(err));
   }
 }
 

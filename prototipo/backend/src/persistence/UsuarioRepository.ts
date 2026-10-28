@@ -22,6 +22,11 @@ export const UsuarioRepository = {
     };
   },
 
+  async porId(id: string): Promise<{ id: string; nombre: string; email: string } | null> {
+    const { rows } = await db.query("SELECT id, nombre, email FROM usuario WHERE id = $1", [id]);
+    return rows[0] ?? null;
+  },
+
   async crear(email: string, nombre: string, passwordHash: string, locale: string): Promise<string> {
     const { rows } = await db.query(
       "INSERT INTO usuario (email, nombre, password_hash, locale_preferido) VALUES ($1, $2, $3, $4) RETURNING id",

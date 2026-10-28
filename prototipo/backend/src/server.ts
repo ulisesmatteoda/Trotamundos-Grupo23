@@ -7,6 +7,8 @@ import { migrar } from "./persistence/migraciones";
 import { sembrarDemo } from "./persistence/seed";
 import { ViajeService } from "./domain/ViajeService";
 import { adaptadoresDeAgencias } from "./integration/registroAgencias";
+import { ConexionCorreoService } from "./domain/ConexionCorreoService";
+import { GmailOAuthAdapter } from "./integration/email/GmailOAuthAdapter";
 
 async function iniciar(): Promise<void> {
   await migrar();
@@ -14,8 +16,13 @@ async function iniciar(): Promise<void> {
 
   // Raíz de composición: el core recibe los adaptadores, nunca los importa (ADR-002).
   ViajeService.configurarAgencias(adaptadoresDeAgencias());
+  ConexionCorreoService.configurarProveedores([
+    new GmailOAuthAdapter(config.correoOauthUrl, config.correoClientId, config.correoClientSecret),
+  ]);
 
   const app = express();
+  // Detrás de nginx: la IP real del cliente viene en X-Forwarded-For (para la auditoría).
+  app.set("trust proxy", true);
   app.use(express.json());
   app.use("/api", crearGateway());
   // Errores previos al Gateway (ej. JSON mal formado) también respetan el contrato.

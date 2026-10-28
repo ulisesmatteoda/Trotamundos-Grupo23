@@ -52,6 +52,22 @@ export interface ResultadoSincronizacion {
   canceladas: number;
 }
 
+export interface ConexionCorreo {
+  conectado: boolean;
+  proveedor?: string;
+  casilla?: string;
+  conectadoEn?: string;
+  urlAutorizacion: string;
+}
+
+export interface Compartido {
+  id: string;
+  viajeId: string;
+  enlaceId: string;
+  designados: string[];
+  estado: "ACTIVO" | "REVOCADO";
+}
+
 export interface ViajeInput {
   nombre: string;
   destino?: string;
@@ -63,4 +79,8 @@ export interface Viaje extends ViajeInput {
   inicio: string | null;
   fin: string | null;
   reservas: Reserva[];
+}
+
+export interface ViajeCompartido extends Viaje {
+  compartidoPor: string;
 }

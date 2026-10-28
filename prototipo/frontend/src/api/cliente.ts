@@ -1,5 +1,16 @@
 // Cliente HTTP del API Gateway. La Capa de Presentación solo habla con /api (Iteración 1, capas estrictas).
-import { RemitenteSeguro, Reserva, ReservaInput, ResultadoSincronizacion, Usuario, Viaje, ViajeInput } from "./tipos";
+import {
+  Compartido,
+  ConexionCorreo,
+  RemitenteSeguro,
+  Reserva,
+  ReservaInput,
+  ResultadoSincronizacion,
+  Usuario,
+  Viaje,
+  ViajeCompartido,
+  ViajeInput,
+} from "./tipos";
 
 export class ErrorApi extends Error {
   constructor(
@@ -61,6 +72,17 @@ export const api = {
   listarRemitentes: () => pedir<RemitenteSeguro[]>("GET", "/whitelist"),
   agregarRemitente: (remitente: string) => pedir<RemitenteSeguro>("POST", "/whitelist", { remitente }),
   eliminarRemitente: (id: string) => pedir<void>("DELETE", `/whitelist/${id}`),
+
+  estadoCorreo: () => pedir<ConexionCorreo>("GET", "/correo/conexion"),
+  conectarCorreo: (codigo: string, redirectUri: string) =>
+    pedir<ConexionCorreo>("POST", "/correo/conexion", { proveedor: "gmail", codigo, redirectUri }),
+  desconectarCorreo: () => pedir<void>("DELETE", "/correo/conexion"),
+
+  compartirViaje: (viajeId: string, designados: string[]) =>
+    pedir<Compartido>("POST", `/viajes/${viajeId}/compartir`, { designados }),
+  listarCompartidos: (viajeId: string) => pedir<Compartido[]>("GET", `/viajes/${viajeId}/compartidos`),
+  verCompartido: (enlaceId: string) => pedir<ViajeCompartido>("GET", `/compartidos/${encodeURIComponent(enlaceId)}`),
+  revocarCompartido: (enlaceId: string) => pedir<void>("DELETE", `/compartidos/${encodeURIComponent(enlaceId)}`),
 
   listarAgencias: () => pedir<string[]>("GET", "/integraciones/agencias"),
   sincronizarAgencia: (proveedor: string) =>

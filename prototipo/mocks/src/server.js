@@ -2,6 +2,7 @@
 //   /booking    API de Booking (hoteles)        — formato propietario en inglés
 //   /despegar   API de Despegar (vuelos)        — formato propietario en español
 //   /tren       API de un operador ferroviario  — formato propietario (QA-05a)
+//   /oauth, /correo   servidor OAuth2 del proveedor de correo (CON-02), ver oauth.js
 //   /_simular   acciones que dispara el simulador web (http://localhost:4000)
 // Los sistemas externos entran a Trotamundos por la puerta pública (nginx → API Gateway),
 // igual que lo haría un proveedor real.
@@ -9,6 +10,7 @@ const express = require("express");
 const path = require("path");
 const { crearDatos } = require("./datos");
 const correos = require("./correos");
+const oauthCorreo = require("./oauth");
 
 const TROTAMUNDOS_URL = process.env.TROTAMUNDOS_URL ?? "http://web/api";
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET ?? "";
@@ -20,6 +22,7 @@ const app = express();
 app.use(express.json());
 app.get("/health", (_req, res) => res.json({ estado: "ok" }));
 app.use(express.static(path.join(__dirname, "public")));
+app.use(oauthCorreo.oauth);
 
 // ---------------------------------------------------------------- APIs de las agencias
 app.use("/booking", (_req, res, next) => (bookingCaido ? res.status(503).json({ error: "service_unavailable" }) : next()));
@@ -69,6 +72,7 @@ async function llamarTrotamundos(ruta, cuerpo) {
 const sim = express.Router();
 
 sim.get("/correo/plantillas", (_req, res) => res.json(correos.plantillas()));
+sim.get("/correo/autorizadas", (_req, res) => res.json(oauthCorreo.casillasAutorizadas()));
 
 sim.post("/correo/enviar", async (req, res) => {
   const correo = correos.armar(req.body.plantilla, req.body.casilla ?? "ana@trotamundos.test", datos);
@@ -126,6 +130,7 @@ sim.post("/tren/cambio", async (_req, res) => {
 sim.post("/restablecer", (_req, res) => {
   datos = crearDatos();
   bookingCaido = false;
+  oauthCorreo.restablecer();
   res.json({ ok: true });
 });
 

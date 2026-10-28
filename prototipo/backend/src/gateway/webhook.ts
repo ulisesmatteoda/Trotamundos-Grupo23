@@ -4,11 +4,17 @@ import { timingSafeEqual } from "crypto";
 import { NextFunction, Request, Response } from "express";
 import { config } from "../config";
 import { ErrorDominio } from "../domain/errores";
+import { AuditoriaSeguridad } from "../security/AuditoriaSeguridad";
 
 const esperado = Buffer.from(config.webhookSecret);
 
 export function requerirSecretoWebhook(req: Request, _res: Response, next: NextFunction): void {
   const recibido = Buffer.from(req.header("x-webhook-secret") ?? "");
-  const valido = recibido.length === esperado.length && timingSafeEqual(recibido, esperado);
-  next(valido ? undefined : new ErrorDominio("WEBHOOK_NO_AUTORIZADO", 401));
+  if (recibido.length === esperado.length && timingSafeEqual(recibido, esperado)) {
+    next();
+    return;
+  }
+  AuditoriaSeguridad.registrar("WEBHOOK_NO_AUTORIZADO", { recurso: req.originalUrl, ip: req.ip }).finally(() =>
+    next(new ErrorDominio("WEBHOOK_NO_AUTORIZADO", 401)),
+  );
 }

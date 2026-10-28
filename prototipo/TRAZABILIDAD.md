@@ -81,10 +81,23 @@ prototipo. Se actualiza al cerrar cada fase.
 | `CurrencyFormatter` | ADR-008 | [`frontend/src/i18n/CurrencyFormatter.ts`](./frontend/src/i18n/CurrencyFormatter.ts) | `EUR 480,00` en es-AR, `€480.00` en en-US |
 | Idioma preferido de la cuenta | QA-06d, CON-04 | [`frontend/src/App.tsx`](./frontend/src/App.tsx) | Bruno (cuenta `en-US`) ve la app en inglés aunque su navegador esté en español |
 
+### Fase 4 — Seguridad y privacidad (Iteraciones 3 y 5)
+
+| Elemento arquitectónico | Origen | Código | Cómo se verifica |
+|---|---|---|---|
+| KMS / Crypto Vault (custodia de la clave maestra) | ADR-005, Iteración 3 (Paso 5.1) | [`backend/src/security/Kms.ts`](./backend/src/security/Kms.ts) | La clave maestra no está en la base; las claves cifradas guardan su `kid` para permitir rotación |
+| Envelope Encryption de los tokens OAuth (AES-256-GCM, clave de datos por token) | ADR-005, QA-04a, QA-04d | [`backend/src/security/CifradoEnvoltorio.ts`](./backend/src/security/CifradoEnvoltorio.ts) | `pg_dump` completo de la base: el token no aparece en texto plano |
+| Conexión OAuth2 con el proveedor de correo (authorization code; el token no pasa por el navegador) | CON-02 | [`domain/ConexionCorreoService.ts`](./backend/src/domain/ConexionCorreoService.ts), [`integration/email/GmailOAuthAdapter.ts`](./backend/src/integration/email/GmailOAuthAdapter.ts), [`frontend/src/oauthCorreo.ts`](./frontend/src/oauthCorreo.ts) | "Integraciones → Conectar Gmail" → pantalla de consentimiento → vuelta a la app conectada. El `state` protege contra CSRF y un `code` no se puede reusar |
+| Solo se procesan correos de casillas con autorización vigente | QA-04c, CON-02 | `ViajeService.procesarReservaMail` | Correo a una casilla desconectada → `CASILLA_NO_CONECTADA`, no se lee |
+| Revocación del acceso al correo | QA-04c | `ConexionCorreoService.desconectar` | El token se revoca ante el proveedor y se borra; los correos siguientes se descartan |
+| Registro y alerta de intentos no autorizados | QA-04a | [`security/AuditoriaSeguridad.ts`](./backend/src/security/AuditoriaSeguridad.ts) → tabla `acceso_denegado_log` + `[ALERTA-SEGURIDAD]` en el log | Login fallido, JWT adulterado, webhook sin secreto, acceso compartido denegado y correo de casilla no conectada |
+| `CompartirService` + `Compartido` (enlace no adivinable de 144 bits + lista de designados) | ADR-010, Iteración 5 | [`domain/CompartirService.ts`](./backend/src/domain/CompartirService.ts), [`persistence/CompartidoRepository.ts`](./backend/src/persistence/CompartidoRepository.ts) | Botón "Compartir" en cada viaje |
+| Solo personas designadas ven el itinerario (con JWT) | QA-04b | `CompartirService.ver` | Bruno (designado) → 200 · Carla (no designada) → 403 en ~25 ms y queda registrado · sin sesión → 401 · enlace revocado → 404 |
+| Vista de solo lectura del itinerario compartido | ADR-010 | [`frontend/src/pages/VistaCompartida.tsx`](./frontend/src/pages/VistaCompartida.tsx) | Abrir el enlace sin sesión pide login y después muestra el viaje, sin botones de edición |
+
 ## Pendiente por fase
 
 | Fase | Elementos |
 |---|---|
-| 4 | Envelope encryption, revocación de correo, `CompartirService`, `Compartido`, log de accesos denegados |
 | 5 | `IRedSocialAdapter`, `FacebookAdapter`, `XAdapter`, `SoporteService`, `IAgenciaSoporteAdapter`, `DespegarSoporteAdapter`, `SoporteRetryConsumer`, "Cómo llegar" |
 | 6 | Read Replica, ETL Pipeline Worker, Data Warehouse, réplicas del backend |

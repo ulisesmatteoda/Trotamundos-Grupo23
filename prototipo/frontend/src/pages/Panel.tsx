@@ -3,6 +3,9 @@ import { useCallback, useEffect, useState } from "react";
 import { api, ErrorApi } from "../api/cliente";
 import { Reserva, ReservaInput, Viaje, ViajeInput } from "../api/tipos";
 import { Integraciones } from "../components/Integraciones";
+import { CompartirViaje } from "../components/CompartirViaje";
+import { Aviso } from "../components/ConexionCorreo";
+import { CLAVE_RESULTADO } from "./CallbackOAuth";
 import { Modal } from "../components/Modal";
 import { ReservaForm } from "../components/ReservaForm";
 import { ViajeCard } from "../components/ViajeCard";
@@ -17,7 +20,8 @@ import { SelectorIdioma } from "../i18n/SelectorIdioma";
 const REFRESCO_MS = 10_000;
 
 type Edicion =
-  | { tipo: "integraciones" }
+  | { tipo: "integraciones"; avisoCorreo?: Aviso | null }
+  | { tipo: "compartir"; viaje: Viaje }
   | { tipo: "nuevo-viaje" }
   | { tipo: "editar-viaje"; viaje: Viaje }
   | { tipo: "nueva-reserva"; viaje: Viaje }
@@ -48,6 +52,23 @@ export function Panel() {
     const intervalo = setInterval(() => document.visibilityState === "visible" && cargar(), REFRESCO_MS);
     return () => clearInterval(intervalo);
   }, [cargar]);
+
+  // Al volver del proveedor de correo (OAuth2) se abre Integraciones con el resultado.
+  useEffect(() => {
+    const resultado = sessionStorage.getItem(CLAVE_RESULTADO);
+    if (!resultado) return;
+    sessionStorage.removeItem(CLAVE_RESULTADO);
+    const texto =
+      resultado === "ok"
+        ? t("correo.conectadaOk")
+        : resultado === "denegado"
+          ? t("correo.denegado")
+          : resultado === "estado-invalido"
+            ? t("correo.estadoInvalido")
+            : mensajeError(resultado.replace("error:", ""));
+    setEdicion({ tipo: "integraciones", avisoCorreo: { texto, ok: resultado === "ok" } });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const cerrar = useCallback(() => setEdicion(null), []);
   const trasGuardar = async () => {
@@ -104,18 +125,27 @@ export function Panel() {
           <ViajeCard
             key={v.id}
             viaje={v}
-            onEditar={() => setEdicion({ tipo: "editar-viaje", viaje: v })}
-            onEliminar={() => confirmarYEjecutar(t("panel.confirmarEliminarViaje", { nombre: v.nombre }), () => api.eliminarViaje(v.id))}
-            onAgregarReserva={() => setEdicion({ tipo: "nueva-reserva", viaje: v })}
-            onEditarReserva={(r) => setEdicion({ tipo: "editar-reserva", reserva: r })}
-            onEliminarReserva={(r) => confirmarYEjecutar(t("panel.confirmarEliminarReserva", { titulo: r.titulo }), () => api.eliminarReserva(r.id))}
+            acciones={{
+              onCompartir: () => setEdicion({ tipo: "compartir", viaje: v }),
+              onEditar: () => setEdicion({ tipo: "editar-viaje", viaje: v }),
+              onEliminar: () => confirmarYEjecutar(t("panel.confirmarEliminarViaje", { nombre: v.nombre }), () => api.eliminarViaje(v.id)),
+              onAgregarReserva: () => setEdicion({ tipo: "nueva-reserva", viaje: v }),
+              onEditarReserva: (r) => setEdicion({ tipo: "editar-reserva", reserva: r }),
+              onEliminarReserva: (r) =>
+                confirmarYEjecutar(t("panel.confirmarEliminarReserva", { titulo: r.titulo }), () => api.eliminarReserva(r.id)),
+            }}
           />
         ))}
       </main>
 
       {edicion?.tipo === "integraciones" && (
         <Modal titulo={t("integraciones.titulo")} onCerrar={cerrar}>
-          <Integraciones onSincronizado={cargar} />
+          <Integraciones onSincronizado={cargar} avisoCorreo={edicion.avisoCorreo} />
+        </Modal>
+      )}
+      {edicion?.tipo === "compartir" && (
+        <Modal titulo={t("compartir.titulo", { viaje: edicion.viaje.nombre })} onCerrar={cerrar}>
+          <CompartirViaje viaje={edicion.viaje} />
         </Modal>
       )}
       {edicion?.tipo === "nuevo-viaje" && (

@@ -18,6 +18,14 @@ export const config = {
   // TTL del Cache-Aside de itinerarios (ADR-007). Acota cuánto puede durar un dato viejo
   // si se perdiera una invalidación; coincide con la ventana de QA-01a (5 minutos).
   cacheTtlSegundos: Number(process.env.CACHE_TTL_SEGUNDOS ?? 300),
+  // KMS simulado (ADR-005): clave maestra AES-256 en base64 y su identificador.
+  kmsClaveMaestra: requerida("KMS_CLAVE_MAESTRA"),
+  kmsClaveId: process.env.KMS_CLAVE_ID ?? "kms-v1",
+  // OAuth2 con el proveedor de correo (CON-02).
+  correoOauthUrl: process.env.CORREO_OAUTH_URL ?? "http://mocks:4000/correo",
+  correoAutorizacionUrl: process.env.CORREO_AUTORIZACION_URL ?? "http://localhost:4000/oauth/autorizar",
+  correoClientId: process.env.CORREO_CLIENT_ID ?? "trotamundos",
+  correoClientSecret: requerida("CORREO_CLIENT_SECRET"),
   // Secreto compartido con los sistemas externos que llaman a nuestros webhooks.
   webhookSecret: requerida("WEBHOOK_SECRET"),
   // Base de las APIs de agencias (en el prototipo, el servicio de mocks).

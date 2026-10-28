@@ -8,6 +8,7 @@ import { ViajeRepository } from "../persistence/ViajeRepository";
 import { UsuarioRepository } from "../persistence/UsuarioRepository";
 import { RemitenteRepository } from "../persistence/RemitenteRepository";
 import { CacheItinerarios } from "../cache/CacheItinerarios";
+import { ConexionCorreoService } from "./ConexionCorreoService";
 import type { IAgenciaAdapter } from "../integration/IAgenciaAdapter";
 import {
   DatosReserva,
@@ -118,7 +119,7 @@ async function aplicarReservaExterna(
   return { resultado: "CREADA", reservaId: reserva.id, viajeId };
 }
 
-export type ResultadoMail = Incorporacion["resultado"] | "REMITENTE_NO_SEGURO" | "SIN_DATOS_DE_VIAJE";
+export type ResultadoMail = Incorporacion["resultado"] | "CASILLA_NO_CONECTADA" | "REMITENTE_NO_SEGURO" | "SIN_DATOS_DE_VIAJE";
 
 export const ViajeService = {
   configurarAgencias(adaptadores: IAgenciaAdapter[]): void {
@@ -185,22 +186,23 @@ export const ViajeService = {
     await CacheItinerarios.invalidar(usuarioId);
   },
 
-  // UC-01 / QA-03b: lo invoca el ItinerarioEmailConsumer. El contenido del correo solo se
-  // lee (extraerDatos) si el remitente está en la whitelist del usuario.
+  // UC-01 / QA-03b / QA-04c: lo invoca el ItinerarioEmailConsumer. El contenido del correo solo
+  // se lee (extraerDatos) si la casilla tiene una conexión OAuth vigente y el remitente está en
+  // la whitelist del usuario.
   async procesarReservaMail(
     casilla: string,
     remitente: string,
     extraerDatos: () => ReservaExterna | null,
   ): Promise<{ resultado: ResultadoMail; reservaId?: string; viajeId?: string }> {
-    const usuario = await UsuarioRepository.porEmail(casilla);
-    if (!usuario) return { resultado: "USUARIO_DESCONOCIDO" };
+    const usuarioId = await ConexionCorreoService.usuarioDeCasilla(casilla);
+    if (!usuarioId) return { resultado: "CASILLA_NO_CONECTADA" };
 
-    const whitelist = (await RemitenteRepository.listar(usuario.id)).map((r) => r.remitente);
+    const whitelist = (await RemitenteRepository.listar(usuarioId)).map((r) => r.remitente);
     if (!esRemitenteSeguro(remitente, whitelist)) return { resultado: "REMITENTE_NO_SEGURO" };
 
     const externa = extraerDatos();
     if (!externa) return { resultado: "SIN_DATOS_DE_VIAJE" };
-    return incorporarReservaExterna(usuario.id, externa, "EMAIL");
+    return incorporarReservaExterna(usuarioId, externa, "EMAIL");
   },
 
   // QA-03a: aviso push del proveedor. El webhook solo se usa como señal; el detalle

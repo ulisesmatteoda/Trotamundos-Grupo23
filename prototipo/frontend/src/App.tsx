@@ -3,6 +3,10 @@ import { useEffect } from "react";
 import { I18nProvider, useI18n } from "./i18n/I18nProvider";
 import { Login } from "./pages/Login";
 import { Panel } from "./pages/Panel";
+import { CallbackOAuth } from "./pages/CallbackOAuth";
+import { VistaCompartida } from "./pages/VistaCompartida";
+import { RUTA_CALLBACK } from "./oauthCorreo";
+import { useRuta } from "./ruta";
 import { ProveedorSesion, useSesion } from "./sesion";
 
 function Rutas() {
@@ -14,7 +18,15 @@ function Rutas() {
     if (usuario?.localePreferido && !elegidoManualmente) cambiarLocale(usuario.localePreferido, false);
   }, [usuario, elegidoManualmente, cambiarLocale]);
 
-  return usuario ? <Panel /> : <Login />;
+  const ruta = useRuta();
+
+  // Las rutas profundas (enlace compartido, vuelta del OAuth) requieren sesión: si no hay,
+  // se muestra el login y, al ingresar, se continúa en la misma URL.
+  if (!usuario) return <Login />;
+  const compartido = /^\/compartido\/([\w-]+)$/.exec(ruta);
+  if (compartido) return <VistaCompartida enlaceId={compartido[1]} />;
+  if (ruta === RUTA_CALLBACK) return <CallbackOAuth />;
+  return <Panel />;
 }
 
 export function App() {

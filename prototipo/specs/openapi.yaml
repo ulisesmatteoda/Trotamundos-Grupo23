@@ -299,7 +299,12 @@ paths:
         "401": { $ref: "#/components/responses/NoAutorizado" }
     post:
       tags: [Correo]
-      summary: Registra el token OAuth2 obtenido del proveedor de correo (flujo simulado)
+      summary: Completa la conexión OAuth2 (authorization code) con el proveedor de correo
+      description: |
+        El cliente fue redirigido a `urlAutorizacion`, el usuario dio su consentimiento y el
+        proveedor volvió con un `codigo`. El backend lo canjea por el token de acceso de
+        servidor a servidor (el token nunca pasa por el navegador) y lo persiste cifrado
+        con Envelope Encryption (ADR-005).
       x-fase: 4
       x-trazabilidad: [CON-02, QA-04a, QA-04d, ADR-005]
       requestBody:
@@ -308,13 +313,11 @@ paths:
           application/json:
             schema:
               type: object
-              required: [proveedor, casilla, accessToken]
+              required: [proveedor, codigo, redirectUri]
               properties:
-                proveedor: { type: string, enum: [gmail, outlook] }
-                casilla: { type: string, format: email }
-                accessToken:
-                  type: string
-                  description: Se persiste cifrado con Envelope Encryption
+                proveedor: { type: string, enum: [gmail] }
+                codigo: { type: string, description: Authorization code devuelto por el proveedor }
+                redirectUri: { type: string, description: La misma redirect_uri usada en la autorización }
       responses:
         "201":
           description: Conexión registrada
@@ -323,9 +326,16 @@ paths:
               schema: { $ref: "#/components/schemas/ConexionCorreo" }
         "400": { $ref: "#/components/responses/Invalido" }
         "401": { $ref: "#/components/responses/NoAutorizado" }
+        "409":
+          description: La casilla ya está conectada a otra cuenta de Trotamundos
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "502": { $ref: "#/components/responses/AgenciaNoDisponible" }
     delete:
       tags: [Correo]
       summary: Revoca el acceso al correo y elimina los tokens
+      description: Revoca el token ante el proveedor y lo borra; desde ese momento no se procesa ningún correo de la casilla (QA-04c).
       x-fase: 4
       x-trazabilidad: [QA-04c]
       responses:
@@ -474,6 +484,25 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
+  /viajes/{viajeId}/compartidos:
+    parameters:
+      - $ref: "#/components/parameters/ViajeId"
+    get:
+      tags: [Compartir]
+      summary: Lista los compartidos activos de un viaje (solo el dueño)
+      x-fase: 4
+      x-trazabilidad: [QA-04b, ADR-010]
+      responses:
+        "200":
+          description: Compartidos activos
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Compartido" }
+        "401": { $ref: "#/components/responses/NoAutorizado" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+
   /compartidos/{enlaceId}:
     get:
       tags: [Compartir]
@@ -487,10 +516,10 @@ paths:
           schema: { type: string }
       responses:
         "200":
-          description: Itinerario compartido
+          description: Itinerario compartido (solo lectura)
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/Viaje" }
+              schema: { $ref: "#/components/schemas/ViajeCompartido" }
         "401": { $ref: "#/components/responses/NoAutorizado" }
         "403":
           description: La persona no está designada; el intento queda registrado
@@ -780,9 +809,12 @@ components:
       required: [conectado]
       properties:
         conectado: { type: boolean }
-        proveedor: { type: string, enum: [gmail, outlook] }
+        proveedor: { type: string, enum: [gmail] }
         casilla: { type: string, format: email }
         conectadoEn: { type: string, format: date-time }
+        urlAutorizacion:
+          type: string
+          description: Página de consentimiento del proveedor (para iniciar la conexión)
 
     CorreoEntrante:
       type: object
@@ -816,6 +848,14 @@ components:
           properties:
             redSocial: { type: string }
             idExterno: { type: string }
+
+    ViajeCompartido:
+      allOf:
+        - $ref: "#/components/schemas/Viaje"
+        - type: object
+          required: [compartidoPor]
+          properties:
+            compartidoPor: { type: string, description: Nombre del dueño del itinerario }
 
     CasoSoporte:
       type: object

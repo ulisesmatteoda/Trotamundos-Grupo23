@@ -3,19 +3,25 @@
 import { Reserva, Viaje } from "../api/tipos";
 import { useI18n } from "../i18n/I18nProvider";
 
-interface Props {
-  viaje: Viaje;
+// Sin `acciones` la tarjeta es de solo lectura (itinerario compartido, ADR-010).
+interface Acciones {
   onEditar: () => void;
   onEliminar: () => void;
+  onCompartir: () => void;
   onAgregarReserva: () => void;
   onEditarReserva: (r: Reserva) => void;
   onEliminarReserva: (r: Reserva) => void;
 }
 
+interface Props {
+  viaje: Viaje;
+  acciones?: Acciones;
+}
+
 const zonaInicio = (r: Reserva) => r.ubicacion?.zonaHoraria;
 const zonaFin = (r: Reserva) => r.ubicacionFin?.zonaHoraria ?? r.ubicacion?.zonaHoraria;
 
-export function ViajeCard({ viaje, onEditar, onEliminar, onAgregarReserva, onEditarReserva, onEliminarReserva }: Props) {
+export function ViajeCard({ viaje, acciones }: Props) {
   const { t, fechaHora, dia, moneda } = useI18n();
 
   // El rango del viaje se muestra en la zona de la primera salida y de la última llegada.
@@ -37,12 +43,15 @@ export function ViajeCard({ viaje, onEditar, onEliminar, onAgregarReserva, onEdi
             {rango}
           </p>
         </div>
-        <div className="acciones-compactas">
-          <button onClick={onEditar}>{t("comun.editar")}</button>
-          <button className="peligro" onClick={onEliminar}>
-            {t("comun.eliminar")}
-          </button>
-        </div>
+        {acciones && (
+          <div className="acciones-compactas">
+            <button onClick={acciones.onCompartir}>{t("compartir.boton")}</button>
+            <button onClick={acciones.onEditar}>{t("comun.editar")}</button>
+            <button className="peligro" onClick={acciones.onEliminar}>
+              {t("comun.eliminar")}
+            </button>
+          </div>
+        )}
       </header>
 
       {viaje.reservas.length > 0 && (
@@ -71,25 +80,29 @@ export function ViajeCard({ viaje, onEditar, onEliminar, onAgregarReserva, onEdi
                       .join(" · ")}
                   </span>
                 </div>
-                <div className="acciones-compactas">
-                  <button onClick={() => onEditarReserva(r)}>{t("comun.editar")}</button>
-                  <button
-                    className="peligro"
-                    onClick={() => onEliminarReserva(r)}
-                    aria-label={t("viaje.eliminarReserva", { titulo: r.titulo })}
-                  >
-                    ×
-                  </button>
-                </div>
+                {acciones && (
+                  <div className="acciones-compactas">
+                    <button onClick={() => acciones.onEditarReserva(r)}>{t("comun.editar")}</button>
+                    <button
+                      className="peligro"
+                      onClick={() => acciones.onEliminarReserva(r)}
+                      aria-label={t("viaje.eliminarReserva", { titulo: r.titulo })}
+                    >
+                      ×
+                    </button>
+                  </div>
+                )}
               </li>
             );
           })}
         </ol>
       )}
 
-      <button className="agregar" onClick={onAgregarReserva}>
-        {t("viaje.agregarReserva")}
-      </button>
+      {acciones && (
+        <button className="agregar" onClick={acciones.onAgregarReserva}>
+          {t("viaje.agregarReserva")}
+        </button>
+      )}
     </article>
   );
 }

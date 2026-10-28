@@ -5,6 +5,7 @@ import { api, ErrorApi } from "../api/cliente";
 import { RemitenteSeguro, ResultadoSincronizacion } from "../api/tipos";
 import { useI18n } from "../i18n/I18nProvider";
 import { useMensajes } from "../i18n/errores";
+import { Aviso, ConexionCorreo } from "./ConexionCorreo";
 
 // Se guardan resultados y códigos (no textos) para que todo siga al idioma elegido.
 type EstadoSync = { resultado: ResultadoSincronizacion } | { error: string };
@@ -12,7 +13,7 @@ type ErrorRemitente = { campo: string } | { codigo: string };
 
 const codigoDe = (err: unknown) => (err instanceof ErrorApi ? err.codigo : "ERROR_INTERNO");
 
-export function Integraciones({ onSincronizado }: { onSincronizado: () => void }) {
+export function Integraciones({ onSincronizado, avisoCorreo }: { onSincronizado: () => void; avisoCorreo?: Aviso | null }) {
   const { t } = useI18n();
   const { mensajeError, mensajeCampo } = useMensajes();
   const [remitentes, setRemitentes] = useState<RemitenteSeguro[]>([]);
@@ -69,6 +70,8 @@ export function Integraciones({ onSincronizado }: { onSincronizado: () => void }
 
   return (
     <div className="formulario">
+      <ConexionCorreo aviso={avisoCorreo} />
+
       <fieldset>
         <legend>{t("integraciones.remitentes")}</legend>
         <p className="pista">{t("integraciones.remitentesPista")}</p>

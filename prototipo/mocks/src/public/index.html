@@ -63,6 +63,7 @@
           <div id="plantillas" style="display: grid; gap: 8px"></div>
           <button data-accion="/correo/rafaga" data-cuerpo='{"cantidad":12}'>Ráfaga de 12 correos (reparto entre workers)</button>
           <p class="pista">El correo se publica en el Event Bus y lo procesa un worker. Ver: <code>docker compose logs -f worker</code></p>
+          <p class="pista">Casillas con acceso OAuth vigente: <strong id="autorizadas">…</strong>. El simulador envía igual a casillas revocadas, para comprobar que Trotamundos no las lee (QA-04c).</p>
         </section>
 
         <section>
@@ -128,6 +129,13 @@
         const cuerpo = { ...JSON.parse(b.dataset.cuerpo ?? "{}"), casilla: document.getElementById("casilla").value };
         ejecutar(b.dataset.accion, cuerpo, b.textContent);
       });
+
+      const refrescarAutorizadas = () =>
+        fetch("/_simular/correo/autorizadas")
+          .then((r) => r.json())
+          .then((l) => (document.getElementById("autorizadas").textContent = l.join(", ") || "ninguna"));
+      refrescarAutorizadas();
+      setInterval(refrescarAutorizadas, 3000);
 
       fetch("/_simular/correo/plantillas")
         .then((r) => r.json())

@@ -4,6 +4,8 @@
 import { ViajeRepository } from "./ViajeRepository";
 import { UsuarioRepository } from "./UsuarioRepository";
 import { RemitenteRepository } from "./RemitenteRepository";
+import { ConexionCorreoRepository } from "./ConexionCorreoRepository";
+import { cifrar } from "../security/CifradoEnvoltorio";
 import { hashear } from "../security/passwords";
 
 const DIA = 24 * 60 * 60 * 1000;
@@ -19,6 +21,8 @@ export async function sembrarDemo(): Promise<void> {
 
   const ana = await UsuarioRepository.crear("ana@trotamundos.test", "Ana", password, "es-AR");
   const bruno = await UsuarioRepository.crear("bruno@trotamundos.test", "Bruno", password, "en-US");
+  // Carla no recibe viajes compartidos: sirve para comprobar el 403 de QA-04b.
+  await UsuarioRepository.crear("carla@trotamundos.test", "Carla", password, "pt-BR");
 
   const madrid = await ViajeRepository.crear(ana, { nombre: "Escapada a Madrid", destino: "Madrid, España" });
   await ViajeRepository.crearReserva(
@@ -78,6 +82,10 @@ export async function sembrarDemo(): Promise<void> {
     "MANUAL",
   );
 
+  // Casilla de Ana ya autorizada (CON-02): el token de demo que el proveedor simulado reconoce,
+  // guardado con Envelope Encryption como cualquier otro.
+  await ConexionCorreoRepository.guardar(ana, "gmail", "ana@trotamundos.test", cifrar("tok-demo-ana"));
+
   // Whitelist de Ana (QA-03b): acepta correos de Booking y Despegar.
   await RemitenteRepository.agregar(ana, "@booking.com");
   await RemitenteRepository.agregar(ana, "@despegar.com");
@@ -96,5 +104,5 @@ export async function sembrarDemo(): Promise<void> {
     "MANUAL",
   );
 
-  console.log("[db] datos de demo cargados (ana@ y bruno@trotamundos.test / demo1234)");
+  console.log("[db] datos de demo cargados (ana@, bruno@ y carla@trotamundos.test / demo1234)");
 }

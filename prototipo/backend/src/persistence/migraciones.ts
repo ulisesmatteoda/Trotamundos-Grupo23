@@ -66,6 +66,47 @@ const MIGRACIONES: { version: number; sql: string }[] = [
       ALTER TABLE reserva ADD COLUMN ubicacion_fin jsonb;
     `,
   },
+  {
+    version: 4,
+    sql: `
+      -- Conexión OAuth2 con el proveedor de correo (CON-02). El token se guarda dentro de un
+      -- sobre de Envelope Encryption (ADR-005): nunca en texto plano.
+      CREATE TABLE conexion_correo (
+        usuario_id   uuid PRIMARY KEY REFERENCES usuario(id) ON DELETE CASCADE,
+        proveedor    text NOT NULL,
+        casilla      text NOT NULL,
+        token_sobre  jsonb NOT NULL,
+        conectado_en timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE UNIQUE INDEX conexion_correo_casilla ON conexion_correo (lower(casilla));
+
+      -- Compartición con personas designadas (ADR-010, Iteración 5).
+      CREATE TABLE compartido (
+        id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        viaje_id   uuid NOT NULL REFERENCES viaje(id) ON DELETE CASCADE,
+        dueno_id   uuid NOT NULL REFERENCES usuario(id) ON DELETE CASCADE,
+        enlace_id  text NOT NULL UNIQUE,
+        estado     text NOT NULL DEFAULT 'ACTIVO' CHECK (estado IN ('ACTIVO', 'REVOCADO')),
+        creado_en  timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE TABLE compartido_designado (
+        compartido_id uuid NOT NULL REFERENCES compartido(id) ON DELETE CASCADE,
+        email         text NOT NULL,
+        PRIMARY KEY (compartido_id, email)
+      );
+
+      -- Auditoría de accesos denegados (QA-04a, QA-04b; Iteración 5).
+      CREATE TABLE acceso_denegado_log (
+        id          bigserial PRIMARY KEY,
+        tipo        text NOT NULL,
+        usuario_id  uuid,
+        recurso     text,
+        ip          text,
+        detalle     jsonb,
+        ocurrido_en timestamptz NOT NULL DEFAULT now()
+      );
+    `,
+  },
 ];
 
 const LOCK_MIGRACIONES = 724_001;

@@ -11,6 +11,15 @@ x-backend-env: &backend-env
   # Secreto compartido con los sistemas externos que llaman a los webhooks.
   WEBHOOK_SECRET: &webhook-secret trotamundos-demo-webhook-secret
   AGENCIAS_URL: http://mocks:4000
+  # KMS simulado (ADR-005): clave maestra AES-256 de demo. En un entorno real vive en el KMS
+  # y el backend nunca la ve; acá se inyecta por entorno.
+  KMS_CLAVE_MAESTRA: RH2zkhMvIf3bzrzfRlinyMaqeBF5zZM0/z0daaQcZoA=
+  KMS_CLAVE_ID: kms-v1
+  # Cliente OAuth2 registrado en el proveedor de correo simulado (CON-02).
+  CORREO_OAUTH_URL: http://mocks:4000/correo
+  CORREO_AUTORIZACION_URL: http://localhost:4000/oauth/autorizar
+  CORREO_CLIENT_ID: trotamundos
+  CORREO_CLIENT_SECRET: &correo-secret trotamundos-demo-oauth-secret
 
 services:
   # --- Capa de Datos -------------------------------------------------------
@@ -96,6 +105,7 @@ services:
       # Los sistemas externos entran por la puerta pública (nginx → API Gateway)
       TROTAMUNDOS_URL: http://web/api
       WEBHOOK_SECRET: *webhook-secret
+      OAUTH_CLIENT_SECRET: *correo-secret
     ports:
       - "4000:4000"
     healthcheck:
