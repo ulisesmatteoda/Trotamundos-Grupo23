@@ -1,6 +1,7 @@
 # Prototipo Trotamundos — topología local que refleja la Vista de Despliegue (Iteración 3).
 # Se publican al host: la entrada web (8080), la consola de RabbitMQ (15672) y el
-# simulador de sistemas externos (4000).
+# simulador de sistemas externos (4000). Las bases (primario, réplica y DW) solo son
+# accesibles dentro de la red de Docker.
 
 x-backend-env: &backend-env
   DATABASE_URL: postgres://trotamundos:trotamundos@postgres:5432/trotamundos
@@ -27,16 +28,55 @@ x-backend-env: &backend-env
 
 services:
   # --- Capa de Datos -------------------------------------------------------
+  # PostgreSQL OLTP Primary (Iteración 3)
   postgres:
     image: postgres:16-alpine
+    command: ["postgres", "-c", "wal_level=replica", "-c", "max_wal_senders=5", "-c", "max_replication_slots=5"]
     environment:
       POSTGRES_USER: trotamundos
       POSTGRES_PASSWORD: trotamundos
       POSTGRES_DB: trotamundos
+      REPLICACION_PASSWORD: &replicacion-password trotamundos-demo-replicacion
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./postgres/primario:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U trotamundos -d trotamundos"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  # PostgreSQL Read Replica (ADR-004): hot standby por streaming, fuente exclusiva del ETL.
+  postgres-replica:
+    image: postgres:16-alpine
+    user: postgres
+    entrypoint: ["/bin/sh", "/replica/iniciar.sh"]
+    environment:
+      PGPASSWORD: *replicacion-password
+    volumes:
+      - pgdata-replica:/var/lib/postgresql/data
+      - ./postgres/replica:/replica:ro
+    depends_on:
+      postgres: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trotamundos -d trotamundos"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  # Data Warehouse (OLAP) con modelo en estrella (ADR-004)
+  dw:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: analitica
+      POSTGRES_PASSWORD: analitica
+      POSTGRES_DB: trotamundos_dw
+    volumes:
+      - dwdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U analitica -d trotamundos_dw"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -68,9 +108,11 @@ services:
     restart: unless-stopped
 
   # --- Capa de Aplicación --------------------------------------------------
-  # API Gateway + Lógica de Negocio (ADR-001)
+  # API Gateway + Lógica de Negocio (ADR-001). Dos réplicas stateless detrás de nginx (ADR-006).
   backend:
     build: ./backend
+    deploy:
+      replicas: 2
     command: ["node", "dist/server.js"]
     environment:
       <<: *backend-env
@@ -98,6 +140,22 @@ services:
     depends_on:
       rabbitmq: { condition: service_healthy }
       # La API aplica las migraciones al arrancar.
+      backend: { condition: service_healthy }
+    restart: unless-stopped
+
+  # ETL Pipeline Worker (ADR-004): lee solo de la réplica y carga el Data Warehouse.
+  etl:
+    build: ./backend
+    command: ["node", "dist/etl/main.js"]
+    environment:
+      REPLICA_URL: postgres://trotamundos:trotamundos@postgres-replica:5432/trotamundos
+      DW_URL: postgres://analitica:analitica@dw:5432/trotamundos_dw
+      ETL_SAL_ANONIMIZACION: trotamundos-demo-sal-etl
+      # En producción, una corrida diaria (datos T-1); en la demo, cada minuto.
+      ETL_INTERVALO_MS: "60000"
+    depends_on:
+      postgres-replica: { condition: service_healthy }
+      dw: { condition: service_healthy }
       backend: { condition: service_healthy }
     restart: unless-stopped
 
@@ -137,3 +195,5 @@ services:
 
 volumes:
   pgdata:
+  pgdata-replica:
+  dwdata:

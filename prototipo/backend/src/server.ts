@@ -1,5 +1,6 @@
 // Proceso API: API Gateway + Lógica de Negocio sincrónica (Iteración 1, capas 2 y 3).
 import express from "express";
+import os from "os";
 import { config } from "./config";
 import { crearGateway } from "./gateway/router";
 import { manejarErrores } from "./api/manejoErrores";
@@ -27,6 +28,11 @@ async function iniciar(): Promise<void> {
   const app = express();
   // Detrás de nginx: la IP real del cliente viene en X-Forwarded-For (para la auditoría).
   app.set("trust proxy", true);
+  // Qué réplica atendió cada request: permite ver el balanceo y el failover (ADR-006).
+  app.use((_req, res, next) => {
+    res.set("X-Instancia", os.hostname());
+    next();
+  });
   app.use(express.json());
   app.use("/api", crearGateway());
   // Errores previos al Gateway (ej. JSON mal formado) también respetan el contrato.

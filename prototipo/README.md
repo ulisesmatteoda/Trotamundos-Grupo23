@@ -40,6 +40,15 @@ Para volver a los datos iniciales: `docker compose down -v && docker compose up 
 4. En la app, "Integraciones → Sincronizar" con cada proveedor: el hotel no se duplica y el tren se agrupa en el mismo viaje.
 5. En el simulador, disparar los webhooks (reprogramar vuelo, cancelar hotel): el cambio se refleja al instante.
 
+### Demo de analítica y disponibilidad (Fase 6)
+
+1. **Reportes del equipo de datos (UC-03):** `docker compose exec etl node dist/etl/reportes.js` (destinos más elegidos, tasa de cancelación por tipo, origen de las reservas, tendencia por trimestre). Corren sobre el Data Warehouse, nunca sobre la base operacional.
+2. **ETL a demanda:** `docker compose exec etl node dist/etl/main.js --una-vez` (además corre solo cada minuto). Una reserva creada en la app aparece en los reportes recién después de una corrida (consistencia eventual, ADR-004).
+3. **Réplica:** `docker compose exec postgres psql -U trotamundos -c "select * from pg_stat_replication"`. Intentar escribir en la réplica falla: `docker compose exec postgres-replica psql -U trotamundos -c "delete from viaje"`.
+4. **Balanceo y failover:** en el navegador (F12 → Red) el header `X-Instancia` cambia entre requests. `docker stop prototipo-backend-1` y la app sigue funcionando; `docker start prototipo-backend-1` y vuelve a la rotación.
+
+> Si venís de una versión anterior del prototipo, levantá con la base limpia (`docker compose down -v`), porque la replicación se configura al inicializar el volumen del primario.
+
 ### Demo de redes, agencia y GPS (Fase 5)
 
 1. **Pedir ayuda (≤ 3 toques):** en una reserva, "Pedir ayuda" → "Enviar a mi agencia". Se ve el ticket de la agencia y, en el simulador (sección "Soporte de Despegar"), el caso con todos los datos de la reserva.
@@ -81,9 +90,12 @@ docker compose down -v
 | Servicio | Rol en la arquitectura |
 |---|---|
 | `web` | nginx: sirve el SPA (hace de CDN) y es la entrada pública que reenvía `/api` al Gateway (hace de ALB) |
-| `backend` | API Gateway + Lógica de Negocio sincrónica (`ViajeService`, …) |
+| `backend` (×2) | API Gateway + Lógica de Negocio sincrónica (`ViajeService`, …). Dos réplicas stateless |
 | `worker` | Workers asincrónicos que consumen del Event Bus |
+| `etl` | ETL Pipeline Worker: lee de la réplica y carga el Data Warehouse |
 | `postgres` | PostgreSQL OLTP Primary |
+| `postgres-replica` | PostgreSQL Read Replica (hot standby por streaming) |
+| `dw` | Data Warehouse (OLAP), modelo en estrella |
 | `redis` | Redis In-Memory Cache |
 | `rabbitmq` | Event Bus / Message Broker |
 | `mocks` | Sistemas externos simulados (correo, agencias, red social, agencia de soporte) |
@@ -98,7 +110,7 @@ docker compose down -v
 | 3 | Cache-Aside con Redis, i18n en el cliente, zona horaria del destino | ✅ |
 | 4 | OAuth2 con el correo, envelope encryption, revocación, auditoría, compartición con designados | ✅ |
 | 5 | Redes sociales, agencia preferida con reintento asincrónico, GPS | ✅ |
-| 6 | Réplica de lectura + ETL + Data Warehouse, réplicas del backend | Pendiente |
+| 6 | Réplica de lectura + ETL + Data Warehouse, réplicas del backend con failover | ✅ |
 
 ## Simplificaciones respecto a la arquitectura documentada
 
@@ -107,7 +119,7 @@ y los contratos se mantienen iguales a los del diseño.
 
 1. **API Gateway:** no es un producto aparte. nginx es la entrada única y el módulo `backend/src/gateway/` concentra el ruteo y la validación de JWT.
 2. **KMS:** la clave maestra se toma de una variable de entorno (en producción, un KMS gestionado). El envelope encryption se implementa de verdad, con AES-256-GCM y una clave de datos por secreto. Se cifran los tokens de acceso al correo; el cifrado del resto de los datos en reposo se delegaría en el cifrado de disco de la base gestionada.
-3. **Application Load Balancer / Auto-Scaling Group:** nginx balancea y los workers se escalan con `--scale` en forma manual; no hay autoescalado por métrica de la cola.
+3. **Application Load Balancer / Auto-Scaling Group:** nginx balancea entre dos réplicas fijas del backend y los workers se escalan con `--scale` en forma manual; no hay autoescalado por métrica de la cola. La réplica de base es asincrónica y no hay *failover* automático del primario (la vista de despliegue lo prevé con un standby gestionado).
 4. **Gmail/Outlook, agencias y redes sociales:** son servicios simulados (`mocks`). Los adaptadores y contratos son los del diseño. El proveedor de correo empuja los mensajes al webhook de ingesta (variante *Push/Webhook* de la Iteración 2) en lugar de sondear por IMAP. La autorización sí es un flujo OAuth2 real (authorization code) contra el proveedor simulado.
 5. **CDN:** nginx sirviendo los estáticos con headers de caché.
 6. **App móvil:** se usa el SPA web responsive; el GPS se accede con la API de geolocalización del navegador.
@@ -116,3 +128,4 @@ y los contratos se mantienen iguales a los del diseño.
 9. **Alertas de seguridad:** se emiten como líneas `[ALERTA-SEGURIDAD]` en el log (lo que tomaría un SIEM) además de persistirse en `acceso_denegado_log`; no hay un sistema de notificación real.
 10. **Redes sociales y agencia de soporte:** son servicios simulados. La agencia preferida se guarda por usuario (todos usan Despegar en la demo) y no tiene pantalla para cambiarla.
 11. **Rutas (GPS):** se usa la API de geolocalización del navegador y se delega la ruta en Google Maps (abre la app nativa en el celular).
+12. **ETL y Data Warehouse:** el ETL hace una recarga completa en cada lote, leyendo de la réplica (que se alimenta del WAL del primario por streaming). Una carga incremental por cambios (CDC con Debezium, como prevé la mitigación de ADR-004) queda como evolución. El DW es un PostgreSQL con modelo en estrella, no un motor columnar.

@@ -111,8 +111,17 @@ prototipo. Se actualiza al cerrar cada fase.
 | Resolución en ≤ 3 toques con el contexto precargado | QA-06c | [`frontend/src/components/PedirAyuda.tsx`](./frontend/src/components/PedirAyuda.tsx) | "Pedir ayuda" → "Enviar a mi agencia" (2 toques); si queda pendiente, la pantalla se actualiza sola al derivarse |
 | "Cómo llegar" con la ubicación del dispositivo | QA-06a | [`frontend/src/gps.ts`](./frontend/src/gps.ts) | Abre la ruta desde la posición actual hasta la reserva (1 toque + permiso la primera vez) |
 
-## Pendiente por fase
+### Fase 6 — Analítica OLTP/OLAP y disponibilidad (Iteración 3)
 
-| Fase | Elementos |
-|---|---|
-| 6 | Read Replica, ETL Pipeline Worker, Data Warehouse, réplicas del backend |
+| Elemento arquitectónico | Origen | Código | Cómo se verifica |
+|---|---|---|---|
+| PostgreSQL Read Replica (hot standby por streaming, con replication slot) | ADR-004, Iteración 3 (Paso 5.2) | [`postgres/primario/01-replicacion.sh`](./postgres/primario/01-replicacion.sh), [`postgres/replica/iniciar.sh`](./postgres/replica/iniciar.sh), servicio `postgres-replica` | `pg_stat_replication` → `streaming`; una escritura del primario aparece en la réplica en < 100 ms; la réplica rechaza escrituras |
+| ETL Pipeline Worker (batch) que lee exclusivamente de la réplica | ADR-004, CRN-03 | [`backend/src/etl/EtlPipeline.ts`](./backend/src/etl/EtlPipeline.ts), [`main.ts`](./backend/src/etl/main.ts), servicio `etl` | `etl_corrida.fuente` = IP de la réplica; apuntado al primario, el ETL se niega a correr (`pg_is_in_recovery`) |
+| Data Warehouse con modelo en estrella | ADR-004 | [`backend/src/etl/esquemaDw.ts`](./backend/src/etl/esquemaDw.ts), servicio `dw` | `hecho_reserva` + `dim_fecha`, `dim_destino`, `dim_tipo_reserva`, `dim_origen` |
+| Carga transaccional (los reportes nunca ven un DW a medio cargar) | ADR-004 | `EtlPipeline.correr` | Un error en la carga hace rollback y se reintenta en el lote siguiente |
+| Consistencia eventual de la analítica (datos T-1) | ADR-004 (consecuencia negativa aceptada) | Intervalo `ETL_INTERVALO_MS` | Una reserva nueva aparece en el DW recién en la corrida siguiente |
+| Datos analíticos sin información personal | QA-04d | Seudonimización `viajero_hash` en `EtlPipeline.ts` | `pg_dump` del DW: sin emails ni nombres |
+| Motor de reportes sobre el DW | UC-03, Iteración 3 | [`backend/src/etl/reportes.ts`](./backend/src/etl/reportes.ts) | `docker compose exec etl node dist/etl/reportes.js`: destinos, cancelaciones, origen y tendencia |
+| Réplicas stateless del backend detrás del balanceador | ADR-006, QA-02, QA-07 | `deploy.replicas: 2` en [`docker-compose.yml`](./docker-compose.yml), upstream en [`frontend/nginx.conf`](./frontend/nginx.conf) | Header `X-Instancia`: las requests se reparten entre las dos réplicas |
+| Failover transparente | QA-02 | `proxy_next_upstream` + `max_fails` en `nginx.conf` | `docker stop prototipo-backend-1`: las requests (y el login) siguen respondiendo 200 |
+| Arranque concurrente seguro de las réplicas | ADR-006 | Advisory locks en [`migraciones.ts`](./backend/src/persistence/migraciones.ts) y [`seed.ts`](./backend/src/persistence/seed.ts) | Solo una réplica aplica migraciones y carga la demo |

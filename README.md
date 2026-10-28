@@ -121,7 +121,10 @@ Trotamundos-Grupo23/
 │   ├── adr-001-estilo-arquitectonico.md
 │   ├── ...
 │   └── adr-010-comparticion-itinerarios-designados.md
+├── prototipo/              # Prototipo ejecutable (Docker Compose), contratos y trazabilidad
 └── README.md
 ```
 
-> El prototipo ejecutable (Docker Compose) se incorporará en la carpeta `prototipo/`.
+> El prototipo ejecutable está en [`prototipo/`](./prototipo): se levanta con `docker compose up --build`.
+> Ver [`prototipo/README.md`](./prototipo/README.md) (cómo correrlo y demos por fase) y
+> [`prototipo/TRAZABILIDAD.md`](./prototipo/TRAZABILIDAD.md) (relación entre drivers, ADRs y código).
