@@ -100,7 +100,7 @@ A partir del estilo de Capas (Layers) y Cliente-Servidor Multi-Tier seleccionado
 ## Paso 6: Bosquejar vistas y registrar decisiones de diseño
 En este paso se generan las representaciones visuales de la arquitectura base definida para Trotamundos y se formalizan las restricciones de diseño. Para esta iteración inicial, se proponen dos vistas fundamentales: la Vista de Contexto y la Vista Estructural de Capas.
 *   **Vista 1: Diagrama de Contexto (Nivel 1)** 
-Esta vista define los límites del sistema "Trotamundos" y expone todas sus interacciones con actores y sistemas externos, lo cual es crítico para visualizar el cumplimiento de los escenarios de Interoperabilidad (QA-03)[cite: 3].
+Esta vista define los límites del sistema "Trotamundos" y expone todas sus interacciones con actores y sistemas externos, lo cual es crítico para visualizar el cumplimiento de los escenarios de Interoperabilidad (QA-03).
 
 ```mermaid
 graph TD
