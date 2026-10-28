@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Simulador externo</title>
+    <style>
+      :root {
+        --fondo: #f4f1ea;
+        --superficie: #fff;
+        --texto: #2a2620;
+        --tenue: #6f6758;
+        --borde: #ddd5c4;
+        --acento: #8a4b0f;
+        --ok: #1f7a3a;
+        --mal: #b42318;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        color: var(--texto);
+        background: var(--fondo);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --fondo: #1d1b17;
+          --superficie: #2a2722;
+          --texto: #eee8dc;
+          --tenue: #b3aa98;
+          --borde: #464036;
+          --acento: #e0a35e;
+          --ok: #6cc98a;
+          --mal: #f08a80;
+        }
+      }
+      body { margin: 0; background: var(--fondo); }
+      main { max-width: 980px; margin: 0 auto; padding: 20px 16px 48px; display: grid; gap: 16px; }
+      header p { color: var(--tenue); margin: 4px 0 0; }
+      .grilla { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+      section { background: var(--superficie); border: 1px solid var(--borde); border-radius: 10px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+      h1 { margin: 0; font-size: 1.4rem; }
+      h2 { margin: 0 0 4px; font-size: 1.05rem; color: var(--acento); }
+      button { font: inherit; text-align: left; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--borde); background: var(--fondo); color: var(--texto); cursor: pointer; }
+      button:hover { border-color: var(--acento); }
+      label { display: flex; gap: 8px; align-items: center; color: var(--tenue); font-size: 0.9rem; }
+      input { font: inherit; padding: 6px 8px; border: 1px solid var(--borde); border-radius: 6px; background: var(--superficie); color: var(--texto); flex: 1; min-width: 0; }
+      #log { background: var(--superficie); border: 1px solid var(--borde); border-radius: 10px; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; max-height: 420px; overflow: auto; }
+      .entrada { border-bottom: 1px dashed var(--borde); padding-bottom: 8px; }
+      .entrada strong.ok { color: var(--ok); }
+      .entrada strong.mal { color: var(--mal); }
+      pre { margin: 6px 0 0; white-space: pre-wrap; word-break: break-word; font-size: 0.82rem; color: var(--tenue); }
+      .pista { color: var(--tenue); font-size: 0.85rem; margin: 0; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Simulador de sistemas externos</h1>
+        <p>Proveedor de correo, Booking y Despegar. Cada acción llama a Trotamundos por su puerta pública (nginx → API Gateway). Mirá el resultado en <a href="http://localhost:8080" target="_blank">localhost:8080</a>.</p>
+      </header>
+
+      <div class="grilla">
+        <section>
+          <h2>Proveedor de correo (UC-01)</h2>
+          <label>Casilla <input id="casilla" value="ana@trotamundos.test" /></label>
+          <div id="plantillas" style="display: grid; gap: 8px"></div>
+          <button data-accion="/correo/rafaga" data-cuerpo='{"cantidad":12}'>Ráfaga de 12 correos (reparto entre workers)</button>
+          <p class="pista">El correo se publica en el Event Bus y lo procesa un worker. Ver: <code>docker compose logs -f worker</code></p>
+        </section>
+
+        <section>
+          <h2>Booking (hoteles)</h2>
+          <button data-accion="/booking/modificar">Extender BK-60311 un día (webhook)</button>
+          <button data-accion="/booking/cancelar">Cancelar BK-60311 (webhook)</button>
+          <button data-accion="/booking/caida" data-cuerpo='{"activa":true}'>Simular caída de la API de Booking</button>
+          <button data-accion="/booking/caida" data-cuerpo='{"activa":false}'>Restablecer la API de Booking</button>
+        </section>
+
+        <section>
+          <h2>Despegar (vuelos)</h2>
+          <button data-accion="/despegar/cambio-horario">Reprogramar DSP-90211 +2 h (webhook)</button>
+        </section>
+
+        <section>
+          <h2>Datos</h2>
+          <button data-accion="/restablecer">Restablecer los datos de los proveedores</button>
+          <p class="pista">Solo afecta a los sistemas simulados, no a la base de Trotamundos.</p>
+        </section>
+      </div>
+
+      <div id="log"><p class="pista">Las respuestas aparecen acá.</p></div>
+    </main>
+
+    <script>
+      const log = document.getElementById("log");
+
+      function registrar(titulo, datos) {
+        if (log.querySelector(".pista")) log.innerHTML = "";
+        const ok = datos.status === undefined ? true : datos.status >= 200 && datos.status < 300;
+        const div = document.createElement("div");
+        div.className = "entrada";
+        const hora = new Date().toLocaleTimeString();
+        const estado = datos.status !== undefined ? ` → HTTP ${datos.status}${datos.ms !== undefined ? ` en ${datos.ms} ms` : ""}` : "";
+        div.innerHTML = `<strong class="${ok ? "ok" : "mal"}"></strong><pre></pre>`;
+        div.querySelector("strong").textContent = `${hora} · ${titulo}${estado}`;
+        div.querySelector("pre").textContent = JSON.stringify(datos.respuesta ?? datos, null, 2);
+        log.prepend(div);
+      }
+
+      async function ejecutar(ruta, cuerpo, titulo) {
+        try {
+          const res = await fetch(`/_simular${ruta}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(cuerpo ?? {}),
+          });
+          registrar(titulo, await res.json());
+        } catch (err) {
+          registrar(titulo, { status: 0, respuesta: String(err) });
+        }
+      }
+
+      document.addEventListener("click", (e) => {
+        const b = e.target.closest("button[data-accion]");
+        if (!b) return;
+        const cuerpo = { ...JSON.parse(b.dataset.cuerpo ?? "{}"), casilla: document.getElementById("casilla").value };
+        ejecutar(b.dataset.accion, cuerpo, b.textContent);
+      });
+
+      fetch("/_simular/correo/plantillas")
+        .then((r) => r.json())
+        .then((lista) => {
+          const cont = document.getElementById("plantillas");
+          for (const p of lista) {
+            const b = document.createElement("button");
+            b.textContent = `Enviar: ${p.descripcion}`;
+            b.dataset.accion = "/correo/enviar";
+            b.dataset.cuerpo = JSON.stringify({ plantilla: p.id });
+            cont.append(b);
+          }
+        });
+    </script>
+  </body>
+</html>

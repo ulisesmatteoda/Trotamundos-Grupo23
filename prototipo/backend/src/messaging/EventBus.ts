@@ -24,18 +24,28 @@ export class EventBus {
     return this.canal !== undefined;
   }
 
-  async publicar(cola: string, evento: object): Promise<void> {
+  // Cola durable con su cola de mensajes fallidos (<cola>.dlq): un evento que no se pudo
+  // procesar no se pierde, queda para inspección o reproceso.
+  private async asegurarCola(cola: string): Promise<Channel> {
     await this.conectar();
-    await this.canal!.assertQueue(cola, { durable: true });
-    this.canal!.sendToQueue(cola, Buffer.from(JSON.stringify(evento)), { persistent: true });
+    const canal = this.canal!;
+    await canal.assertQueue(`${cola}.dlq`, { durable: true });
+    await canal.assertQueue(cola, {
+      durable: true,
+      arguments: { "x-dead-letter-exchange": "", "x-dead-letter-routing-key": `${cola}.dlq` },
+    });
+    return canal;
+  }
+
+  async publicar(cola: string, evento: object): Promise<void> {
+    const canal = await this.asegurarCola(cola);
+    canal.sendToQueue(cola, Buffer.from(JSON.stringify(evento)), { persistent: true, contentType: "application/json" });
   }
 
   // Un mensaje por worker a la vez (prefetch 1): así, al escalar workers,
   // la cola se reparte entre todos (ADR-006).
   async suscribir(cola: string, manejar: Manejador): Promise<void> {
-    await this.conectar();
-    const canal = this.canal!;
-    await canal.assertQueue(cola, { durable: true });
+    const canal = await this.asegurarCola(cola);
     await canal.prefetch(1);
     await canal.consume(cola, async (msg: ConsumeMessage | null) => {
       if (!msg) return;
@@ -43,7 +53,7 @@ export class EventBus {
         await manejar(JSON.parse(msg.content.toString()));
         canal.ack(msg);
       } catch (err) {
-        console.error(`[EventBus] error procesando mensaje de ${cola}`, err);
+        console.error(`[EventBus] error procesando mensaje de ${cola}, se envía a ${cola}.dlq`, err);
         canal.nack(msg, false, false);
       }
     });

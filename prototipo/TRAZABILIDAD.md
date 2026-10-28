@@ -39,11 +39,33 @@ prototipo. Se actualiza al cerrar cada fase.
 | Horas en la zona del lugar de la reserva | QA-06d | [`frontend/src/fechas.ts`](./frontend/src/fechas.ts) | Una reserva en `Europe/Madrid` se carga y muestra en hora de Madrid |
 | Panel agrupado por viaje, activos / archivados | UC-02, CON-01 | [`frontend/src/pages/Panel.tsx`](./frontend/src/pages/Panel.tsx), [`ViajeCard.tsx`](./frontend/src/components/ViajeCard.tsx) | http://localhost:8080 (también en ancho de móvil) |
 
+### Fase 2 — UC-01 Ingesta asincrónica de correos e integración con proveedores
+
+| Elemento arquitectónico | Origen | Código | Cómo se verifica |
+|---|---|---|---|
+| `EmailIngestionListener` (Publisher) | ADR-003, Iteración 2 | [`backend/src/integration/email/EmailIngestionListener.ts`](./backend/src/integration/email/EmailIngestionListener.ts) | `POST /api/ingesta/email` responde 202 en ~40 ms sin procesar el correo |
+| Contrato `NuevoMailReservaEvent` + Correlation ID | ADR-003, Iteración 2 (mitigación de trazabilidad) | [`backend/src/messaging/colas.ts`](./backend/src/messaging/colas.ts), [`specs/events/nuevo-mail-reserva.schema.json`](./specs/events/nuevo-mail-reserva.schema.json) | El mismo `cid` aparece en el log del listener y del worker |
+| Event Bus con cola de mensajes fallidos | ADR-003 | [`backend/src/messaging/EventBus.ts`](./backend/src/messaging/EventBus.ts) | Colas `correos.reservas` y `correos.reservas.dlq` en la consola de RabbitMQ |
+| `ItinerarioEmailConsumer` (Subscriber) | ADR-003, Iteración 2 | [`backend/src/workers/ItinerarioEmailConsumer.ts`](./backend/src/workers/ItinerarioEmailConsumer.ts) | `docker compose logs -f worker` |
+| Reparto de carga entre workers | ADR-006, QA-07 | `prefetch(1)` en [`EventBus.ts`](./backend/src/messaging/EventBus.ts) | `--scale worker=3` + "Ráfaga de 12 correos" → se reparten 4/4/4 |
+| Whitelist de remitentes (el contenido solo se lee si el remitente es seguro) | QA-03b | [`backend/src/domain/whitelist.ts`](./backend/src/domain/whitelist.ts), `ViajeService.procesarReservaMail` | Correo de un remitente no seguro → `REMITENTE_NO_SEGURO` |
+| Correos no relacionados se ignoran sin errores | QA-03b | [`backend/src/integration/email/ParserCorreoReserva.ts`](./backend/src/integration/email/ParserCorreoReserva.ts) | Newsletter → `SIN_DATOS_DE_VIAJE`, la DLQ queda vacía |
+| Contrato `IAgenciaAdapter` (ACL) | ADR-002, Iteración 2 | [`backend/src/integration/IAgenciaAdapter.ts`](./backend/src/integration/IAgenciaAdapter.ts) | — |
+| `BookingAdapter` / `DespegarAdapter` (formatos propietarios distintos) | ADR-002, QA-03a | [`backend/src/integration/adapters/`](./backend/src/integration/adapters) | Booking: inglés, ISO con offset, centavos. Despegar: español, hora local "dd/mm/aaaa", "1.380,50" |
+| Core desacoplado de los adaptadores concretos | ADR-002, QA-05b | Inyección en [`server.ts`](./backend/src/server.ts) desde [`registroAgencias.ts`](./backend/src/integration/registroAgencias.ts) | `ViajeService` solo importa el tipo `IAgenciaAdapter` |
+| Webhooks de proveedores (aviso → consulta del detalle vigente) | QA-03a | `ViajeService.procesarNotificacionAgencia` | Cambio de horario/cancelación reflejado en ~10-20 ms (escenario: < 30 s) |
+| `ViajeService.sincronizarConAgencia` | Iteración 2 (Vista de Módulos) | [`backend/src/domain/ViajeService.ts`](./backend/src/domain/ViajeService.ts) | "Integraciones → Sincronizar" en la UI |
+| Sin duplicados entre fuentes (identidad proveedor + código) | UC-01 | `incorporarReservaExterna` en `ViajeService` | El mismo hotel por mail y por Booking queda como una sola reserva |
+| Agrupación automática en el viaje que corresponde | UC-01, UC-02 | `ViajeRepository.viajeActivoQueContiene` | Vuelo y hotel de Lisboa terminan en el mismo viaje |
+| Autenticación de webhooks con secreto compartido | QA-04 | [`backend/src/gateway/webhook.ts`](./backend/src/gateway/webhook.ts) | Webhook sin `X-Webhook-Secret` → 401 |
+| Falla del proveedor aislada | QA-02 | [`backend/src/integration/http.ts`](./backend/src/integration/http.ts) | "Simular caída de Booking" → 502 `AGENCIA_NO_DISPONIBLE`, el resto sigue funcionando |
+| Actualizaciones visibles sin recargar | QA-01a | Refresco cada 10 s en [`Panel.tsx`](./frontend/src/pages/Panel.tsx) | Un correo enviado con el panel abierto aparece en ≤ 10 s |
+| Sistemas externos simulados | Diagrama de Contexto (Iteración 1) | [`mocks/src/`](./mocks/src) | Simulador en http://localhost:4000 |
+
 ## Pendiente por fase
 
 | Fase | Elementos |
 |---|---|
-| 2 | `EmailIngestionListener`, `ItinerarioEmailConsumer`, whitelist, `IAgenciaAdapter`, `BookingAdapter`, `DespegarAdapter`, `TrenAdapter` |
 | 3 | Cache-Aside en `ViajeService`, `I18nProvider`, `DateTimeFormatter`, `CurrencyFormatter`, `es.json`/`en.json` |
 | 4 | Envelope encryption, revocación de correo, `CompartirService`, `Compartido`, log de accesos denegados |
 | 5 | `IRedSocialAdapter`, `FacebookAdapter`, `XAdapter`, `SoporteService`, `IAgenciaSoporteAdapter`, `DespegarSoporteAdapter`, `SoporteRetryConsumer`, "Cómo llegar" |

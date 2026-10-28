@@ -3,6 +3,7 @@
 // un viaje próximo y uno ya terminado que el ArchivadoJob debe archivar.
 import { ViajeRepository } from "./ViajeRepository";
 import { UsuarioRepository } from "./UsuarioRepository";
+import { RemitenteRepository } from "./RemitenteRepository";
 import { hashear } from "../security/passwords";
 
 const DIA = 24 * 60 * 60 * 1000;
@@ -74,6 +75,10 @@ export async function sembrarDemo(): Promise<void> {
     },
     "MANUAL",
   );
+
+  // Whitelist de Ana (QA-03b): acepta correos de Booking y Despegar.
+  await RemitenteRepository.agregar(ana, "@booking.com");
+  await RemitenteRepository.agregar(ana, "@despegar.com");
 
   const bariloche = await ViajeRepository.crear(bruno, { nombre: "Ski en Bariloche", destino: "Bariloche, Argentina" });
   await ViajeRepository.crearReserva(

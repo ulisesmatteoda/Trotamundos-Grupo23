@@ -38,6 +38,18 @@ export interface Reserva extends ReservaInput {
   actualizadoEn: string;
 }
 
+export interface RemitenteSeguro {
+  id: string;
+  remitente: string;
+}
+
+export interface ResultadoSincronizacion {
+  proveedor: string;
+  creadas: number;
+  actualizadas: number;
+  canceladas: number;
+}
+
 export interface ViajeInput {
   nombre: string;
   destino?: string;

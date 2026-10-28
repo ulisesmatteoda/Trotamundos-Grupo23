@@ -262,6 +262,11 @@ paths:
               schema: { $ref: "#/components/schemas/RemitenteSeguro" }
         "400": { $ref: "#/components/responses/Invalido" }
         "401": { $ref: "#/components/responses/NoAutorizado" }
+        "409":
+          description: El remitente ya está en la lista
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
   /whitelist/{remitenteId}:
     delete:
@@ -356,22 +361,58 @@ paths:
                   correlationId: { type: string, format: uuid }
         "401": { $ref: "#/components/responses/NoAutorizado" }
 
+  /integraciones/agencias:
+    get:
+      tags: [Integraciones]
+      summary: Lista los proveedores de reservas con un adaptador registrado
+      description: |
+        El cliente arma la lista de "Sincronizar con…" a partir de esta respuesta, por lo que
+        incorporar un proveedor nuevo no requiere cambios en el frontend (QA-05a).
+      x-fase: 2
+      x-trazabilidad: [QA-05a, ADR-002]
+      responses:
+        "200":
+          description: Nombres de los adaptadores registrados
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: string, example: booking }
+        "401": { $ref: "#/components/responses/NoAutorizado" }
+
+  /integraciones/agencias/{proveedor}/sincronizar:
+    post:
+      tags: [Integraciones]
+      summary: Trae del proveedor las reservas del usuario y las incorpora al itinerario
+      description: Invoca IAgenciaAdapter.sincronizarItinerario (ViajeService.sincronizarConAgencia, Iteración 2).
+      x-fase: 2
+      x-trazabilidad: [UC-01, QA-03a, ADR-002]
+      parameters:
+        - $ref: "#/components/parameters/Proveedor"
+      responses:
+        "200":
+          description: Resultado de la sincronización
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ResultadoSincronizacion" }
+        "401": { $ref: "#/components/responses/NoAutorizado" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+        "502": { $ref: "#/components/responses/AgenciaNoDisponible" }
+
   /integraciones/agencias/{proveedor}/webhook:
     post:
       tags: [Integraciones]
       summary: Webhook de actualizaciones y cancelaciones de un proveedor de reservas
       description: |
-        El cuerpo tiene el formato propietario de cada proveedor. El adaptador
-        correspondiente (IAgenciaAdapter) lo traduce al modelo canónico (ADR-002).
+        El cuerpo tiene el formato propietario de cada proveedor y solo se usa como aviso:
+        el adaptador (IAgenciaAdapter) extrae la referencia, consulta el detalle vigente
+        a la API del proveedor y lo traduce al modelo canónico (ADR-002).
       security:
         - webhookSecret: []
       x-fase: 2
       x-trazabilidad: [QA-03a, QA-05b, ADR-002]
       parameters:
-        - name: proveedor
-          in: path
-          required: true
-          schema: { type: string, example: booking }
+        - $ref: "#/components/parameters/Proveedor"
       requestBody:
         required: true
         content:
@@ -380,13 +421,19 @@ paths:
               type: object
               additionalProperties: true
       responses:
-        "202": { description: Actualización aplicada }
+        "202":
+          description: Actualización aplicada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ResultadoIncorporacion" }
+        "400": { $ref: "#/components/responses/Invalido" }
         "401": { $ref: "#/components/responses/NoAutorizado" }
         "404":
           description: No hay un adaptador registrado para ese proveedor
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+        "502": { $ref: "#/components/responses/AgenciaNoDisponible" }
 
   /viajes/{viajeId}/compartir:
     parameters:
@@ -541,6 +588,12 @@ components:
       in: path
       required: true
       schema: { type: string, format: uuid }
+    Proveedor:
+      name: proveedor
+      in: path
+      required: true
+      description: Nombre del adaptador registrado (ver GET /integraciones/agencias)
+      schema: { type: string, example: booking }
 
   responses:
     NoAutorizado:
@@ -555,6 +608,11 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
     Invalido:
       description: El cuerpo no cumple el contrato
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    AgenciaNoDisponible:
+      description: La API del proveedor externo no respondió o respondió con error
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
@@ -690,6 +748,25 @@ components:
       properties:
         id: { type: string, format: uuid }
         remitente: { type: string, example: "@booking.com" }
+
+    ResultadoIncorporacion:
+      type: object
+      required: [resultado]
+      properties:
+        resultado:
+          type: string
+          enum: [CREADA, ACTUALIZADA, CANCELADA, SIN_CAMBIOS, USUARIO_DESCONOCIDO]
+        reservaId: { type: string, format: uuid, nullable: true }
+        viajeId: { type: string, format: uuid, nullable: true }
+
+    ResultadoSincronizacion:
+      type: object
+      required: [proveedor, creadas, actualizadas, canceladas]
+      properties:
+        proveedor: { type: string }
+        creadas: { type: integer }
+        actualizadas: { type: integer }
+        canceladas: { type: integer }
 
     ConexionCorreo:
       type: object

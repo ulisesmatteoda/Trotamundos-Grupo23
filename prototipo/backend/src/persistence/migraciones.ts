@@ -43,6 +43,22 @@ const MIGRACIONES: { version: number; sql: string }[] = [
       CREATE INDEX reserva_viaje ON reserva (viaje_id);
     `,
   },
+  {
+    version: 2,
+    sql: `
+      -- Whitelist de remitentes seguros por usuario (QA-03b).
+      CREATE TABLE remitente_seguro (
+        id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        usuario_id uuid NOT NULL REFERENCES usuario(id) ON DELETE CASCADE,
+        remitente  text NOT NULL
+      );
+      CREATE UNIQUE INDEX remitente_seguro_unico ON remitente_seguro (usuario_id, lower(remitente));
+
+      -- Identidad externa de una reserva: (proveedor, código). Permite que un mail y un webhook
+      -- de la misma reserva actualicen el mismo registro en lugar de duplicarlo.
+      CREATE INDEX reserva_identidad_externa ON reserva (lower(proveedor), lower(codigo_confirmacion));
+    `,
+  },
 ];
 
 const LOCK_MIGRACIONES = 724_001;

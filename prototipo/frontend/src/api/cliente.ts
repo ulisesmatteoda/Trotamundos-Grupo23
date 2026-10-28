@@ -1,5 +1,5 @@
 // Cliente HTTP del API Gateway. La Capa de Presentación solo habla con /api (Iteración 1, capas estrictas).
-import { Reserva, ReservaInput, Usuario, Viaje, ViajeInput } from "./tipos";
+import { RemitenteSeguro, Reserva, ReservaInput, ResultadoSincronizacion, Usuario, Viaje, ViajeInput } from "./tipos";
 
 export class ErrorApi extends Error {
   constructor(
@@ -57,4 +57,12 @@ export const api = {
     pedir<Reserva>("POST", `/viajes/${viajeId}/reservas`, datos),
   actualizarReserva: (id: string, datos: ReservaInput) => pedir<Reserva>("PUT", `/reservas/${id}`, datos),
   eliminarReserva: (id: string) => pedir<void>("DELETE", `/reservas/${id}`),
+
+  listarRemitentes: () => pedir<RemitenteSeguro[]>("GET", "/whitelist"),
+  agregarRemitente: (remitente: string) => pedir<RemitenteSeguro>("POST", "/whitelist", { remitente }),
+  eliminarRemitente: (id: string) => pedir<void>("DELETE", `/whitelist/${id}`),
+
+  listarAgencias: () => pedir<string[]>("GET", "/integraciones/agencias"),
+  sincronizarAgencia: (proveedor: string) =>
+    pedir<ResultadoSincronizacion>("POST", `/integraciones/agencias/${encodeURIComponent(proveedor)}/sincronizar`),
 };

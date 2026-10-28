@@ -5,10 +5,15 @@ import { crearGateway } from "./gateway/router";
 import { manejarErrores } from "./api/manejoErrores";
 import { migrar } from "./persistence/migraciones";
 import { sembrarDemo } from "./persistence/seed";
+import { ViajeService } from "./domain/ViajeService";
+import { adaptadoresDeAgencias } from "./integration/registroAgencias";
 
 async function iniciar(): Promise<void> {
   await migrar();
   if (config.seedDemo) await sembrarDemo();
+
+  // Raíz de composición: el core recibe los adaptadores, nunca los importa (ADR-002).
+  ViajeService.configurarAgencias(adaptadoresDeAgencias());
 
   const app = express();
   app.use(express.json());

@@ -131,6 +131,46 @@ export const ViajeRepository = {
     await db.query("DELETE FROM reserva WHERE id = $1", [reservaId]);
   },
 
+  // Reserva del usuario identificada por (proveedor, código), sin importar su origen.
+  async buscarPorIdentidadExterna(usuarioId: string, proveedor: string, codigo: string): Promise<Reserva | null> {
+    const { rows } = await db.query(
+      `SELECT r.* FROM reserva r JOIN viaje v ON v.id = r.viaje_id
+       WHERE v.usuario_id = $1 AND lower(r.proveedor) = lower($2) AND lower(r.codigo_confirmacion) = lower($3)
+       LIMIT 1`,
+      [usuarioId, proveedor, codigo],
+    );
+    return rows[0] ? aReserva(rows[0]) : null;
+  },
+
+  async actualizarDesdeFuente(reservaId: string, datos: DatosReserva, estado: Reserva["estado"]): Promise<Reserva> {
+    const { rows } = await db.query(
+      `UPDATE reserva SET tipo = $2, titulo = $3, inicio = $4, fin = $5,
+              ubicacion = coalesce($6, ubicacion), precio = coalesce($7, precio),
+              estado = $8, actualizado_en = now()
+       WHERE id = $1 RETURNING *`,
+      [reservaId, datos.tipo, datos.titulo, datos.inicio, datos.fin ?? null, datos.ubicacion ?? null, datos.precio ?? null, estado],
+    );
+    return aReserva(rows[0]);
+  },
+
+  async cancelarReserva(reservaId: string): Promise<void> {
+    await db.query("UPDATE reserva SET estado = 'CANCELADA', actualizado_en = now() WHERE id = $1", [reservaId]);
+  },
+
+  // Viaje activo del usuario cuyo rango (±1 día) contiene la fecha.
+  async viajeActivoQueContiene(usuarioId: string, fecha: Date): Promise<string | null> {
+    const { rows } = await db.query(
+      `SELECT v.id FROM viaje v JOIN reserva r ON r.viaje_id = v.id
+       WHERE v.usuario_id = $1 AND v.estado = 'ACTIVO' AND r.estado <> 'CANCELADA'
+       GROUP BY v.id
+       HAVING min(r.inicio) - interval '1 day' <= $2 AND max(coalesce(r.fin, r.inicio)) + interval '1 day' >= $2
+       ORDER BY min(r.inicio)
+       LIMIT 1`,
+      [usuarioId, fecha],
+    );
+    return rows[0]?.id ?? null;
+  },
+
   // Archiva los viajes activos cuya última reserva vigente terminó antes de `ahora`.
   async archivarFinalizadosAntesDe(ahora: Date): Promise<{ id: string; usuarioId: string }[]> {
     const { rows } = await db.query(

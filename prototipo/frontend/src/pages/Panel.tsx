@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, ErrorApi } from "../api/cliente";
 import { Reserva, ReservaInput, Viaje, ViajeInput } from "../api/tipos";
+import { Integraciones } from "../components/Integraciones";
 import { Modal } from "../components/Modal";
 import { ReservaForm } from "../components/ReservaForm";
 import { ViajeCard } from "../components/ViajeCard";
@@ -9,7 +10,12 @@ import { ViajeForm } from "../components/ViajeForm";
 import { useSesion } from "../sesion";
 import { mensajeError } from "../textos";
 
+// Refresco periódico para que las reservas que llegan por correo o por las agencias
+// aparezcan sin recargar (QA-01a: reflejadas en menos de 5 minutos).
+const REFRESCO_MS = 10_000;
+
 type Edicion =
+  | { tipo: "integraciones" }
   | { tipo: "nuevo-viaje" }
   | { tipo: "editar-viaje"; viaje: Viaje }
   | { tipo: "nueva-reserva"; viaje: Viaje }
@@ -34,6 +40,8 @@ export function Panel() {
   useEffect(() => {
     setViajes(null);
     cargar();
+    const intervalo = setInterval(() => document.visibilityState === "visible" && cargar(), REFRESCO_MS);
+    return () => clearInterval(intervalo);
   }, [cargar]);
 
   const cerrar = useCallback(() => setEdicion(null), []);
@@ -57,6 +65,7 @@ export function Panel() {
       <header className="barra">
         <strong className="marca">Trotamundos</strong>
         <span className="tenue">{usuario?.nombre}</span>
+        <button onClick={() => setEdicion({ tipo: "integraciones" })}>Integraciones</button>
         <button onClick={salir}>Salir</button>
       </header>
 
@@ -98,6 +107,11 @@ export function Panel() {
         ))}
       </main>
 
+      {edicion?.tipo === "integraciones" && (
+        <Modal titulo="Integraciones" onCerrar={cerrar}>
+          <Integraciones onSincronizado={cargar} />
+        </Modal>
+      )}
       {edicion?.tipo === "nuevo-viaje" && (
         <Modal titulo="Nuevo viaje" onCerrar={cerrar}>
           <ViajeForm onCancelar={cerrar} onGuardar={async (d: ViajeInput) => (await api.crearViaje(d), trasGuardar())} />

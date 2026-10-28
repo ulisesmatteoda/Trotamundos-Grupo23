@@ -53,6 +53,17 @@ export interface Viaje extends DatosViaje {
   reservas: Reserva[];
 }
 
+// Reserva proveniente de una fuente externa (correo o agencia), ya traducida al modelo
+// canónico por la Capa de Integración (ADR-002).
+export interface ReservaExterna {
+  datos: DatosReserva;
+  estado: EstadoReserva;
+  destino?: string;
+  emailCliente?: string;
+}
+
+export type ResultadoIncorporacion = "CREADA" | "ACTUALIZADA" | "CANCELADA" | "SIN_CAMBIOS" | "USUARIO_DESCONOCIDO";
+
 // Inicio y fin del viaje se derivan de sus reservas vigentes (UC-02: agrupación por viaje).
 export function rangoDelViaje(viaje: Viaje): { inicio: Date | null; fin: Date | null } {
   const vigentes = viaje.reservas.filter((r) => r.estado !== "CANCELADA");

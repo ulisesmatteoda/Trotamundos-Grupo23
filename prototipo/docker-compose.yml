@@ -1,5 +1,6 @@
 # Prototipo Trotamundos — topología local que refleja la Vista de Despliegue (Iteración 3).
-# Solo se publican al host la entrada web (8080) y la consola de RabbitMQ (15672).
+# Se publican al host: la entrada web (8080), la consola de RabbitMQ (15672) y el
+# simulador de sistemas externos (4000).
 
 x-backend-env: &backend-env
   DATABASE_URL: postgres://trotamundos:trotamundos@postgres:5432/trotamundos
@@ -7,6 +8,9 @@ x-backend-env: &backend-env
   RABBITMQ_URL: amqp://trotamundos:trotamundos@rabbitmq:5672
   # Secreto de firma de los JWT (ADR-005). Valor de demo: en un entorno real viene del KMS.
   JWT_SECRET: trotamundos-demo-jwt-secret-no-usar-en-produccion
+  # Secreto compartido con los sistemas externos que llaman a los webhooks.
+  WEBHOOK_SECRET: &webhook-secret trotamundos-demo-webhook-secret
+  AGENCIAS_URL: http://mocks:4000
 
 services:
   # --- Capa de Datos -------------------------------------------------------
@@ -89,6 +93,11 @@ services:
     build: ./mocks
     environment:
       PORT: "4000"
+      # Los sistemas externos entran por la puerta pública (nginx → API Gateway)
+      TROTAMUNDOS_URL: http://web/api
+      WEBHOOK_SECRET: *webhook-secret
+    ports:
+      - "4000:4000"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4000/health"]
       interval: 10s

@@ -16,6 +16,10 @@ const ERRORES: Record<string, string> = {
   VIAJE_NO_ENCONTRADO: "El viaje ya no existe.",
   RESERVA_NO_ENCONTRADA: "La reserva ya no existe.",
   DATOS_INVALIDOS: "Revisá los campos marcados.",
+  REMITENTE_DUPLICADO: "Ese remitente ya está en la lista.",
+  REMITENTE_NO_ENCONTRADO: "El remitente ya no está en la lista.",
+  AGENCIA_DESCONOCIDA: "No hay integración con ese proveedor.",
+  AGENCIA_NO_DISPONIBLE: "El proveedor no responde en este momento. Probá más tarde.",
   SIN_CONEXION: "No se pudo conectar con el servidor.",
   ERROR_INTERNO: "Ocurrió un error inesperado.",
 };
@@ -30,6 +34,23 @@ const ERRORES_CAMPO: Record<string, string> = {
   NUMERO_INVALIDO: "Ingresá un número mayor o igual a 0.",
   MONEDA_INVALIDA: "Usá un código de 3 letras (ej. USD).",
   TIPO_INVALIDO: "Elegí un tipo de la lista.",
+  REMITENTE_INVALIDO: "Usá una dirección (reservas@aerolinea.com) o un dominio (@booking.com).",
+};
+
+export const ORIGEN_RESERVA: Record<string, string> = {
+  EMAIL: "Importada de tu correo",
+  AGENCIA: "Sincronizada con el proveedor",
+};
+
+export const ESTADO_RESERVA: Record<string, string> = {
+  MODIFICADA: "Modificada",
+  CANCELADA: "Cancelada",
+};
+
+// Nombre visible de cada integración; si llega una nueva sin traducción se muestra su nombre técnico.
+export const NOMBRE_AGENCIA: Record<string, string> = {
+  booking: "Booking",
+  despegar: "Despegar",
 };
 
 export const mensajeError = (codigo: string) => ERRORES[codigo] ?? ERRORES.ERROR_INTERNO;

@@ -1,7 +1,7 @@
 // Un viaje con sus reservas agrupadas y ordenadas cronológicamente (UC-02).
 import { Reserva, Viaje } from "../api/tipos";
 import { formatearDia, formatearFecha } from "../fechas";
-import { TIPOS_RESERVA } from "../textos";
+import { ESTADO_RESERVA, ORIGEN_RESERVA, TIPOS_RESERVA } from "../textos";
 
 interface Props {
   viaje: Viaje;
@@ -48,7 +48,15 @@ export function ViajeCard({ viaje, onEditar, onEliminar, onAgregarReserva, onEdi
               <li key={r.id} className={`reserva ${r.estado === "CANCELADA" ? "cancelada" : ""}`}>
                 <span className={`etiqueta tipo-${r.tipo.toLowerCase()}`}>{TIPOS_RESERVA[r.tipo] ?? r.tipo}</span>
                 <div className="reserva-cuerpo">
-                  <strong>{r.titulo}</strong>
+                  <strong className="reserva-titulo">{r.titulo}</strong>
+                  {(ESTADO_RESERVA[r.estado] || ORIGEN_RESERVA[r.origen]) && (
+                    <span className="chips">
+                      {ESTADO_RESERVA[r.estado] && (
+                        <span className={`chip estado-${r.estado.toLowerCase()}`}>{ESTADO_RESERVA[r.estado]}</span>
+                      )}
+                      {ORIGEN_RESERVA[r.origen] && <span className="chip">{ORIGEN_RESERVA[r.origen]}</span>}
+                    </span>
+                  )}
                   <span className="tenue">
                     {formatearFecha(r.inicio, zona)}
                     {r.fin && <> → {formatearFecha(r.fin, zona)}</>}
