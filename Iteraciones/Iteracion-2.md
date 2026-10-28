@@ -280,7 +280,7 @@ A continuación, se actualiza el estado del backlog general basándose en los re
 | **CON-01** | Soporte multiplataforma | Completamente Abordado | Resuelto en la Iteración 1 (Backend for Frontend / API Gateway). |
 | **QA-01a / CRN-02**| Performance Asincrónica (< 5m) | Completamente Abordado | Resuelto en Iteración 2 con Message Broker y patrón Pub-Sub. |
 | **QA-03a,b / QA-05a,b**| Interoperabilidad y Mantenibilidad | Completamente Abordado | Resuelto en Iteración 2 con Anti-Corruption Layer e Interfaces (`IAgenciaAdapter`). |
-| **QA-03c,d**| Interoperabilidad | Parcialmente Abordado | Pendiente conexión con redes sociales y agencia preferida |
+| **QA-03c,d**| Interoperabilidad | No Tratado | Pendiente conexión con redes sociales y agencia preferida |
 | **UC-01** | Unificación automática (Mails) | Completamente Abordado | Resuelto mediante la ingesta asincrónica (Listeners/Workers). |
 | **CON-03** | Spec-Driven Development | Completamente Abordado | Bases establecidas mediante el uso de interfaces abstractas. |
 | **CON-02** | Protocolos de correo OAuth2/IMAP | Parcialmente Abordado | Mencionados lógicamente, pero falta diseñar sus clases específicas. |
