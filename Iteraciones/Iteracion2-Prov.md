@@ -167,27 +167,25 @@ graph TD
     
     BookingAdapter -->|"Petición HTTP/REST"| AgenciaAPI
     DespegarAdapter -->|"Petición HTTP/REST"| AgenciaAPI
-
-    %% Leyenda Gráfica
-    subgraph Leyenda["Leyenda de Colores"]
-        L1[Rojo: Entidades Externas]:::externo
-        L2[Amarillo: Módulo Pub/Sub]:::pubsub
-        L3[Verde: Core de Negocio]:::core
-        L4[Azul: Adaptadores e Interfaces]:::adapter
-    end
-    
-    %% Ocultar líneas de la leyenda para que flote sola
-    L1 ~~~ L2 ~~~ L3 ~~~ L4
-    style Leyenda fill:#f9f9f9,stroke:#666,stroke-width:1px,stroke-dasharray: 5 5
 ```
+
+#### Leyenda y Explicación de la Vista 1 (C&C)
+*   **UserMail → EmailIngestion (Webhook/IMAP):** Entrada del correo enviado por el usuario con su comprobante de reserva.
+*   **EmailIngestion (Publisher):** Recibe el correo bruto, extrae los metadatos básicos y publica un evento `NuevoMailReservaEvent` de forma asincrónica.
+*   **EventBus (Message Broker):** Conector de desacoplamiento temporal y espacial que distribuye eventos a los suscriptores interesados.
+*   **EmailSubscriber (Subscriber):** Escucha el tópico de eventos de correo, parsea la información y convoca a la lógica de dominio.
+*   **IAgenciaAdapter + Adaptadores:** Capa intermedia que homogeneiza las respuestas heterogéneas de las APIs externas (Booking, Despegar) hacia un modelo de datos unificado dentro de Trotamundos.
+*   **Leyenda de Colores del Gráfico:** **Rojo:** Entidades Externas | **Amarillo:** Módulo Pub/Sub |  **Verde:** Core de Negocio |  **Azul:** Adaptadores e Interfaces.
+
+---
 
 ### Vista 2: Vista de Módulos (Estructura de Código / Clases e Interfaces)
 Esta vista representa la organización estática del código fuente, las interfaces y las relaciones de dependencia bajo la regla de dependencias allowed-to-use.
 
+**Leyenda de Colores:**  **Verde:** Lógica de Negocio |  **Amarillo:** Eventos Pub/Sub |  **Gris Punteado:** Interfaces |  **Violeta:** Implementaciones de Adaptadores.
+
 ```mermaid
 classDiagram
-    note "Leyenda de Colores:\nVerde: Lógica de Negocio\nNaranja: Eventos Pub/Sub\nGris Punteado: Interfaces\nVioleta: Implementaciones de Adaptadores"
-
     class ViajeService {
         +procesarReservaMail(datosReserva)
         +sincronizarConAgencia(agenciaId)
@@ -236,6 +234,4 @@ classDiagram
     
     style IAgenciaAdapter fill:#f8f9fa,stroke:#6c757d,stroke-width:2px,color:#495057,stroke-dasharray: 5 5
     
-    style BookingAdapter fill:#e2d9f3,stroke:#6f42c1,stroke-width:2px,color:#432874
-    style DespegarAdapter fill:#e2d9f3,stroke:#6f42c1,stroke-width:2px,color:#432874
-```
+    style BookingAdapter fill:#e2d9f3,stroke:#6f42c1,stroke-width:2px
