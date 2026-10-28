@@ -42,9 +42,9 @@ services:
       - ./postgres/primario:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U trotamundos -d trotamundos"]
-      interval: 5s
+      interval: 2s
       timeout: 3s
-      retries: 10
+      retries: 25
     restart: unless-stopped
 
   # PostgreSQL Read Replica (ADR-004): hot standby por streaming, fuente exclusiva del ETL.
@@ -61,9 +61,9 @@ services:
       postgres: { condition: service_healthy }
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U trotamundos -d trotamundos"]
-      interval: 5s
+      interval: 2s
       timeout: 3s
-      retries: 20
+      retries: 50
     restart: unless-stopped
 
   # Data Warehouse (OLAP) con modelo en estrella (ADR-004)
@@ -77,9 +77,9 @@ services:
       - dwdata:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U analitica -d trotamundos_dw"]
-      interval: 5s
+      interval: 2s
       timeout: 3s
-      retries: 10
+      retries: 25
     restart: unless-stopped
 
   # Redis In-Memory Cache (ADR-007)
@@ -87,9 +87,9 @@ services:
     image: redis:7.4-alpine
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
+      interval: 2s
       timeout: 3s
-      retries: 10
+      retries: 25
     restart: unless-stopped
 
   # Event Bus / Message Broker (ADR-003)
@@ -102,15 +102,17 @@ services:
       - "15672:15672"
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 10s
+      interval: 3s
       timeout: 5s
-      retries: 10
+      retries: 40
     restart: unless-stopped
 
   # --- Capa de Aplicación --------------------------------------------------
   # API Gateway + Lógica de Negocio (ADR-001). Dos réplicas stateless detrás de nginx (ADR-006).
   backend:
     build: ./backend
+    # worker y etl usan esta misma imagen: se compila una sola vez.
+    image: trotamundos-backend
     deploy:
       replicas: 2
     command: ["node", "dist/server.js"]
@@ -124,14 +126,15 @@ services:
       rabbitmq: { condition: service_healthy }
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
-      interval: 10s
+      interval: 3s
       timeout: 3s
-      retries: 5
+      retries: 20
     restart: unless-stopped
 
   # Workers asincrónicos (ADR-003, ADR-006). Escalables con --scale worker=N
   worker:
-    build: ./backend
+    image: trotamundos-backend
+    pull_policy: never
     command: ["node", "dist/workers/main.js"]
     environment:
       <<: *backend-env
@@ -145,7 +148,8 @@ services:
 
   # ETL Pipeline Worker (ADR-004): lee solo de la réplica y carga el Data Warehouse.
   etl:
-    build: ./backend
+    image: trotamundos-backend
+    pull_policy: never
     command: ["node", "dist/etl/main.js"]
     environment:
       REPLICA_URL: postgres://trotamundos:trotamundos@postgres-replica:5432/trotamundos
@@ -173,9 +177,9 @@ services:
       - "4000:4000"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4000/health"]
-      interval: 10s
+      interval: 3s
       timeout: 3s
-      retries: 5
+      retries: 20
     restart: unless-stopped
 
   # --- Capa de Presentación + entrada pública ------------------------------
@@ -188,9 +192,9 @@ services:
       backend: { condition: service_healthy }
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
-      interval: 10s
+      interval: 3s
       timeout: 3s
-      retries: 5
+      retries: 20
     restart: unless-stopped
 
 volumes:
