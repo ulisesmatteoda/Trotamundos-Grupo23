@@ -41,6 +41,8 @@ De las 5 capas lógicas instanciadas en la Iteración 1, se seleccionan dos capa
 1.  **Capa de Lógica de Negocio:** Se abre el "orquestador central" para definir los servicios sincrónicos de itinerario, la cola de mensajes y los componentes consumidores (*Workers*).
 2.  **Capa de Integración Externa:** Se abren los adaptadores para precisar cómo se traducen e ingresan los datos de terceros hacia el modelo de dominio intern
 
+---
+
 ## Paso 4: Elegir los conceptos de diseño que satisfacen los drivers seleccionados
 
 Para dar soporte a la lógica core y a las integraciones del sistema (resolviendo los *drivers* priorizados para esta iteración), se evalúan y seleccionan patrones arquitectónicos y tácticas específicas de atributos de calidad basados en el catálogo de Bass et al.
@@ -50,70 +52,60 @@ A continuación, se detallan los dos conceptos de diseño principales selecciona
 ### 1. Patrón: Anti-Corruption Layer (ACL) / Adaptadores (Wrappers)
 **Táctica Asociada:** *Tailor Interface / Encapsulate* (Empaquetar / Aislar Cambios).
 
-* **Por qué elegimos esta opción:** 
-  Las APIs de proveedores externos (aerolíneas, hoteles, Gmail, Outlook) tienen modelos de datos heterogéneos y políticas que cambian con frecuencia. Necesitamos una capa traductora mediadora que envase esta complejidad en un "wrapper" (adaptador) y convierta las respuestas a un modelo de dominio interno canonizado (*TravelReservationDTO*). Esto aísla completamente el núcleo del backend, limitando la "onda de choque" de cualquier cambio externo a un único componente aislado.
-* **Drivers que aborda:** 
-  * **QA-05a / QA-05b** (Evolucionabilidad y Mantenibilidad)[cite: 8].
-  * **QA-03a / QA-03b** (Interoperabilidad con proveedores y correos)[cite: 8].
+- **Por qué elegimos esta opción:**
+  Las APIs de agencias externas (como Booking, Despegar o Airbnb) tienen modelos de datos heterogéneos y políticas que cambian con frecuencia. Necesitamos una capa traductora mediadora que envase esta complejidad en adaptadores concretos (`BookingAdapter`, `DespegarAdapter`) implementando una interfaz unificada (`IAgenciaAdapter`). Esto aísla completamente el núcleo del backend (`ViajeService`), limitando la "onda de choque" de cualquier cambio externo a un único componente aislado.
+- **Drivers que aborda:**
+  * **QA-05a / QA-05b** (Evolucionabilidad y Mantenibilidad).
+  * **QA-03a / QA-03b** (Interoperabilidad con proveedores).
 
 | Opción Evaluada | Pros | Contras | Decisión |
 | :--- | :--- | :--- | :--- |
-| **Opción A: Anti-Corruption Layer (ACL) y Adaptadores** | - Aísla al Core del sistema de cambios externos.<br>- Permite resolver actualizaciones de terceros en menos de 2 días-persona (**QA-05b**)[cite: 8].<br>- Facilita agregar nuevos transportes sin tocar el código central (**QA-05a**)[cite: 8]. | - Introduce un ligero *overhead* de procesamiento por la traducción de datos.<br>- Requiere mayor esfuerzo inicial para definir los DTOs neutros y mapeadores. | **Seleccionada.** |
-| **Opción B: Integración Directa (Punto a Punto)** | - Desarrollo inicial más rápido.<br>- Menor cantidad de clases y abstracciones en el código. | - Alto acoplamiento. Cualquier cambio en la API de Iberia o Gmail rompe la lógica de negocio core.<br>- Imposibilita cumplir con la mantenibilidad requerida (**QA-05**)[cite: 8]. | *Descartada.* |
+| **Opción A: Anti-Corruption Layer (ACL) e Interfaces** | - Aísla al Core (ViajeService) de cambios externos.<br>- Permite resolver actualizaciones de terceros en menos de 2 días-persona (**QA-05b**).<br>- Facilita agregar nuevas agencias sin tocar el código central (**QA-05a**). | - Introduce un ligero *overhead* de procesamiento por la traducción de datos.<br>- Requiere mayor esfuerzo inicial para definir las interfaces abstractas. | **Seleccionada.** |
+| **Opción B: Integración Directa (Punto a Punto)** | - Desarrollo inicial más rápido.<br>- Menor cantidad de clases y abstracciones en el código. | - Alto acoplamiento. Cualquier cambio en la API de Despegar rompe la lógica de negocio core.<br>- Imposibilita cumplir con la mantenibilidad requerida (**QA-05**). | *Descartada.* |
 
 ---
 
 ### 2. Patrón: Publish-Subscribe / Broker de Mensajes (Cola Asincrónica)
 **Táctica Asociada:** *Asynchronous Interaction / Manage Queue Size* (Manejo de Respuestas Asincrónicas).
 
-* **Por qué elegimos esta opción:** 
-  El escaneo y *parsing* de correos es un proceso pesado. Si se hiciera de forma sincrónica, bloquearía los hilos HTTP del servidor. Al usar un patrón orientado a eventos (*Event-Driven*) con un *Broker* de mensajes, los emisores publican eventos ("nuevo correo detectado") en una cola sin conocer a los receptores. Los *workers* consumen estos eventos de forma totalmente desacoplada, nivelando la carga (*load leveling*) para garantizar que los itinerarios se reflejen en menos de 5 minutos sin degradar la latencia de navegación de los usuarios web/móvil.
-* **Drivers que aborda:** 
-  * **QA-01a** (Performance - Sincronización asincrónica en menos de 5 minutos)[cite: 8].
-  * **CRN-02** (Desacoplamiento de procesamiento asincrónico)[cite: 8].
-  * **QA-07a** (Escalabilidad - Amortiguación de picos extremos)[cite: 7, 8].
+- **Por qué elegimos esta opción:**
+  La recepción y *parsing* de correos es un proceso que no debe bloquear el sistema. Al usar un patrón *Event-Driven* con un *Message Broker* (`EventBus`), los emisores (`EmailIngestionListener`) publican eventos de nuevos correos sin conocer a los receptores. Los *workers* asincrónicos (`ItinerarioEmailConsumer`) consumen estos eventos de forma desacoplada, nivelando la carga para garantizar que los itinerarios se reflejen rápidamente en la base de datos sin degradar la latencia de navegación de los usuarios.
+- **Drivers que aborda:**
+  * **QA-01a** (Performance - Sincronización asincrónica en menos de 5 minutos).
+  * **CRN-02** (Desacoplamiento de procesamiento asincrónico).
+  * **QA-07a** (Escalabilidad - Amortiguación de picos extremos).
 
 | Opción Evaluada | Pros | Contras | Decisión |
 | :--- | :--- | :--- | :--- |
-| **Opción A: Publish-Subscribe mediante Broker de Mensajes** | - Desacopla totalmente la recepción del procesamiento pesado.<br>- Amortigua picos de tráfico (Backpressure) mediante consumidores competitivos[cite: 7, 8].<br>- Garantiza que los hilos HTTP del usuario no se bloqueen. | - Añade complejidad de infraestructura (hay que desplegar y mantener un Broker como RabbitMQ o Kafka).<br>- La depuración (debugging) de errores asincrónicos es más compleja. | **Seleccionada.** |
-| **Opción B: Procesamiento Sincrónico Directo o Hilos Locales (In-Memory)** | - Arquitectura mucho más simple (sin infraestructura extra).<br>- Trazabilidad y debugging directo en el mismo hilo de ejecución. | - Ante un pico de correos, los hilos de memoria se agotan y el servidor colapsa (**QA-07a**)[cite: 8].<br>- Si el servidor se reinicia, se pierden las tareas en memoria (falta de durabilidad). | *Descartada.* |
+| **Opción A: Publish-Subscribe mediante Event Bus** | - Desacopla totalmente la ingesta (Listener) del procesamiento (Consumer).<br>- Amortigua picos de tráfico de correos.<br>- Garantiza que los hilos HTTP del usuario no se bloqueen. | - Añade complejidad de infraestructura (hay que mantener un Bus/Broker).<br>- La trazabilidad de los eventos asincrónicos es más compleja. | **Seleccionada.** |
+| **Opción B: Procesamiento Sincrónico Directo In-Memory** | - Arquitectura mucho más simple (sin infraestructura extra).<br>- Trazabilidad y debugging directo en el mismo hilo de ejecución. | - Ante un pico de correos, los hilos se agotan y el servidor colapsa (**QA-07a**).<br>- Si el servidor se reinicia, se pierden los correos en memoria. | *Descartada.* |
 
 ---
 
 ## Paso 5: Instanciar elementos arquitectónicos y asignar responsabilidades
 
-A partir de los patrones y tácticas seleccionados en el Paso 4 (*Anti-Corruption Layer*, *Publish-Subscribe*, *Domain Model* y *Service Application Reference Architecture*), procedemos a hacer "zoom-in" e instanciar los componentes internos. Nos concentraremos principalmente en la Capa de Lógica de Negocio y la Capa de Integración Externa, explicando cómo estas decisiones impactan en el resto de la arquitectura.
+A partir de los patrones seleccionados en el Paso 4, procedemos a hacer "zoom-in" e instanciar los componentes internos. Nos concentraremos en reflejar fielmente la estructura definida en las vistas arquitectónicas de componentes y módulos.
 
-### 1. Capa de Presentación
-*   **Influencia de los Patrones:** Gracias a la *Service Application Reference Architecture*, esta capa permanece totalmente aislada de la complejidad del backend y de las reglas de negocio.
-*   **Elementos y Responsabilidades:** Instancia las interfaces de usuario (Web SPA y Mobile). Se comunica única y exclusivamente enviando y recibiendo **DTOs (Data Transfer Objects) planos** a través de contratos estándar (REST/JSON), ignorando por completo cómo se procesan o guardan los datos.
+### 1. Capa de Presentación y API Gateway
+*   Permanecen aisladas de la complejidad del backend. Enrutan las peticiones HTTP entrantes directamente hacia los *Controllers*, comunicándose exclusivamente mediante **DTOs (Data Transfer Objects)** planos.
 
-### 2. Capa de Servicios y API (API Gateway)
-*   **Influencia de los Patrones:** Mantiene su rol de único punto de entrada estandarizado para proteger las interfaces.
-*   **Elementos y Responsabilidades:** Enruta las peticiones HTTP entrantes desde la Capa de Presentación directamente hacia los *Controllers* correspondientes en la Capa de Lógica de Negocio, manejando en el futuro la seguridad y limitación de tasa (*rate limiting*).
+### 2. Módulo de Ingesta Asincrónica (EDA / Pub-Sub)
+Instancia el patrón Publish-Subscribe para el manejo de correos:
+*   **EmailIngestionListener (Publisher):** Punto de entrada de los correos (vía Push/Webhook o IMAP). Recibe el payload bruto y publica un evento genérico en el bus, liberando el hilo inmediatamente.
+*   **Event Bus / Message Broker:** La infraestructura de mensajería que absorbe la carga pesada y retiene los eventos hasta que puedan ser procesados.
+*   **ItinerarioEmailConsumer (Subscriber):** Actúa como *Worker* en segundo plano. Escucha el bus de mensajes, extrae los datos del viaje del evento y llama a la lógica de negocio sincrónica para actualizar el sistema.
 
-### 3. Capa de Lógica de Negocio (Backend Core / Orquestador Central)
-Aquí se instancian los patrones *Domain Model* y *Publish-Subscribe*, desglosando el núcleo del sistema en componentes altamente cohesivos:
-*   **Controllers (API REST Layer):** Exponen los endpoints. Reciben los DTOs desde el Gateway, realizan validaciones sintácticas básicas y delegan la ejecución a la capa de servicios.
-*   **Itinerary Domain Service (Orquestador Sincrónico):** Gestiona los flujos de la aplicación (`UC-02`). No implementa reglas de negocio complejas directamente, sino que coordina la recuperación de entidades, invoca sus métodos y delega la persistencia.
-*   **Domain Model (Entidades Ricas - DDD):** Es el corazón del sistema. Entidades como `Itinerary`, `FlightReservation` o `HotelReservation` agrupan de forma cohesiva los atributos y las reglas estrictas del negocio (ej. validación de fechas, cálculo de solapamientos). Son totalmente agnósticas a la base de datos o la interfaz.
-*   **Message Broker (Cola Asincrónica - Pub/Sub):** Infraestructura de mensajería (ej. RabbitMQ o Kafka) que absorbe la carga pesada (`QA-01a`). Gestiona colas específicas como `email-scan-tasks` (órdenes de sondeo) y `raw-email-events` (correos descargados pendientes de procesamiento).
-*   **Workers Asincrónicos (Email Ingestion & Parsing Worker):** Consumidores competitivos que procesan eventos de la cola en segundo plano (`UC-01`). Al finalizar el *parsing*, invocan al *Itinerary Domain Service* para consolidar la reserva, re-utilizando así exactamente la misma lógica de dominio que el flujo sincrónico.
+### 3. Capa de Lógica de Negocio (Backend Core)
+Es el orquestador central y corazón del sistema, protegido de la infraestructura externa:
+*   **ViajeService:** Módulo central del dominio que gestiona los flujos de la aplicación (ej. `procesarReservaMail`, `sincronizarConAgencia`). Orquesta la lógica y delega la integración externa exclusivamente a través de contratos abstractos (`IAgenciaAdapter`), ignorando las implementaciones concretas.
 
-### 4. Capa de Integración Externa
-*   **Influencia de los Patrones:** Se materializa directamente el patrón *Anti-Corruption Layer (ACL)* y la táctica *Tailor Interface*.
-*   **Elementos y Responsabilidades:** Actúa como mediadora y traductora estricta. Se instancian:
-    *   **Mail Provider Adapters (OAuth2/IMAP):** Encapsulan la complejidad de conexión técnica con Gmail o Outlook.
-    *   **Travel API Adapters:** Wrappers para absorber los cambios de aerolíneas y hoteles (`QA-05`).
-    *   **ACL Engine:** Toma los datos crudos y heterogéneos (XML, JSON externo o correos MIME) y los traduce al DTO interno canonizado (`TravelReservationDTO`).
-    *   *Restricción ratificada:* Como establece la arquitectura base (*Layer Bridging*), **ningún componente de esta capa accede a la base de datos**; todo se retorna a la Capa de Negocio.
+### 4. Capa de Integración de Agencias (Adapter / ACL)
+Materializa el patrón *Anti-Corruption Layer (ACL)* aislando al dominio de los cambios de terceros:
+*   **IAgenciaAdapter:** Interfaz que define el contrato estandarizado (`obtenerDetallesReserva`, `sincronizarItinerario`) que `ViajeService` espera consumir.
+*   **BookingAdapter / DespegarAdapter:** Implementaciones concretas. Envuelven la comunicación HTTP/REST con las APIs específicas de cada agencia, mapean sus formatos propietarios (JSON/XML) y los traducen al modelo interno de Trotamundos. Ninguno de estos adaptadores tiene acceso a la base de datos.
 
 ### 5. Capa de Datos (Persistencia)
-*   **Influencia de los Patrones:** Da soporte directo a la persistencia del *Domain Model* sin contaminarlo con lógica SQL.
-
-
-*   **Elementos y Responsabilidades:** El acceso a la Base de Datos Operacional (OLTP) se realiza mediante **Repositorios (Data Access Layer)**. Estos repositorios actúan como mapeadores (Data Mappers / ORM), encargándose de transformar las filas relacionales de las tablas en instancias vivas de las entidades del modelo de dominio, aislando al núcleo del sistema de los detalles del motor de base de datos.
-
+*   **DB PostgreSQL:** Base de datos relacional operacional (OLTP) donde la Capa de Lógica de Negocio almacena los itinerarios procesados y unificados, aislada de la ingesta de correos y de las respuestas de las agencias.
 ---
 
 ### Paso 6: Definir Interfaces y Vistas Arquitectónicas (C&C y Módulos)
@@ -201,10 +193,10 @@ Esta vista representa la organización estática del código fuente, las interfa
 classDiagram
     %% Leyenda unificada en un solo bloque vertical
     class LEYENDA_DE_COLORES {
-        🟩 Verde: Lógica de Negocio
-        🟨 Amarillo: Eventos Pub/Sub
-        ⬜ Gris: Interfaces (Abstractas)
-        🟪 Violeta: Adaptadores (Concretos)
+         Verde: Lógica de Negocio
+         Amarillo: Eventos Pub/Sub
+         Gris: Interfaces (Abstractas)
+         Violeta: Adaptadores (Concretos)
     }
 
     class ViajeService {
@@ -266,3 +258,37 @@ classDiagram
 * **IAgenciaAdapter:** Contrato que define las operaciones estándar que el dominio requiere de cualquier agencia externa. Actúa como barrera de protección frente a cambios de terceros.
 * **BookingAdapter / DespegarAdapter:** Implementaciones concretas de la interfaz. Encapsulan la lógica específica, endpoints, y mapeo de datos de cada API externa para transformarlos al modelo interno de Trotamundos.
 * **EmailIngestionListener & ItinerarioEmailConsumer:** Clases encargadas de la ingesta asincrónica. El Listener publica el evento al bus, mientras que el Consumer lo escucha e inicia el procesamiento en el dominio.
+
+---
+
+## Paso 7: Evaluar el diseño actual y revisar el backlog de drivers
+
+**Evaluación de la Iteración 2 respecto a los objetivos del Paso 2:**
+El diseño de esta iteración abordó con éxito el núcleo del problema de integración y concurrencia. Mediante la introducción de los patrones **Anti-Corruption Layer (ACL)** y **Publish-Subscribe**, se logró el desacoplamiento crítico para procesar correos asincrónicamente mediante `EmailIngestionListener` e `ItinerarioEmailConsumer` (`QA-01a`, `CRN-02`). Además, se protegió la lógica core (`ViajeService`) de los cambios volátiles en las APIs de terceros mediante adaptadores concretos bajo la interfaz `IAgenciaAdapter` (`QA-05a/b`, `QA-03a/b`). 
+
+**Qué faltó o quedó parcialmente cubierto:**
+*   **CON-02 (OAuth2/IMAP):** Aunque se instanció la ingesta de correos genérica en el diseño, los adaptadores específicos para lidiar con la complejidad de la autenticación OAuth2 y el protocolo IMAP con proveedores como Gmail/Outlook no fueron modelados en detalle en la vista de clases.
+*   **UC-02 (Gestión Manual de Viaje):** El flujo de gestión manual quedó subsumido dentro de las responsabilidades generales del `ViajeService`, pero no se detallaron en profundidad los contratos de las operaciones CRUD ni cómo se exponen hacia la capa de presentación mediante Spec-Driven Development (`CON-03`).
+
+A continuación, se actualiza el estado del backlog general basándose en los resultados de la Iteración 1 y 2, utilizando el formato estándar del método ADD para el proyecto Trotamundos.
+
+### Estado actualizado del Backlog de Drivers (Fin de Iteración 2)
+
+| ID Driver | Descripción / Atributo | Estado Actual | Comentarios / Resolución |
+| :--- | :--- | :--- | :--- |
+| **CRN-01** | Estructura general greenfield | Completamente Abordado | Resuelto en la Iteración 1 (Multi-Tier, MVC/API). |
+| **CON-01** | Soporte multiplataforma | Completamente Abordado | Resuelto en la Iteración 1 (Backend for Frontend / API Gateway). |
+| **QA-01a / CRN-02**| Performance Asincrónica (< 5m) | Completamente Abordado | Resuelto en Iteración 2 con Message Broker y patrón Pub-Sub. |
+| **QA-03a,b / QA-05a,b**| Interoperabilidad y Mantenibilidad | Completamente Abordado | Resuelto en Iteración 2 con Anti-Corruption Layer e Interfaces (`IAgenciaAdapter`). |
+| **UC-01** | Unificación automática (Mails) | Completamente Abordado | Resuelto mediante la ingesta asincrónica (Listeners/Workers). |
+| **CON-03** | Spec-Driven Development | Completamente Abordado | Bases establecidas mediante el uso de interfaces abstractas. |
+| **CON-02** | Protocolos de correo OAuth2/IMAP | Parcialmente Abordado | Mencionados lógicamente, pero falta diseñar sus clases específicas. |
+| **UC-02** | Gestión manual de viaje | Parcialmente Abordado | Base estructural de dominio lista (`ViajeService`); requiere detalle de endpoints. |
+| **CRN-03 / UC-03** | Segregación OLAP/OLTP | Parcialmente Abordado | Base de datos dividida en Iteración 1; falta diseñar el proceso ETL/Sincronización. |
+| **QA-01b, c** | Optimizaciones de Red y Front | No Tratado | Pendiente de definición de caché (ej. Redis/CDN) y paginación. |
+| **QA-02 / QA-07** | Redundancia y Escalado (Picos) | No Tratado | Pendiente de topología física de despliegue (ej. balanceadores, orquestación). |
+| **QA-04a,b,c,d** | Seguridad y Privacidad | No Tratado | Pendiente (Identity Provider, autenticación, encripción de datos sensibles). |
+| **QA-06** | Usabilidad e Internacionalización | No Tratado | Pendiente de definición en componentes de frontend y diccionarios de internacionalización. |
+
+**Conclusión para el próximo ciclo:**
+La **Iteración 3** deberá enfocarse en cerrar las brechas de infraestructura física, seguridad e integridad de datos. Los principales candidatos para el próximo objetivo son **Seguridad y Privacidad (`QA-04`)**, el mecanismo de **Sincronización de Datos ETL (`CRN-03 / UC-03`)** para nutrir el motor de reportes, y la **Topología de Despliegue de Alta Disponibilidad (`QA-02 / QA-07`)** que determine cómo escalar dinámicamente los workers asincrónicos definidos en esta etapa.
