@@ -10,6 +10,7 @@ Se revisan las entradas disponibles al iniciar esta cuarta iteración:
   * **No Tratados / Pendientes para esta iteración:**
     * `QA-06`: **Usabilidad e Internacionalización (i18n):** Soporte multi-idioma, formato de fechas/monedas localizadas y gestión de zonas horarias heterogéneas.
     * `QA-01b, c`: **Performance, Latencia y Optimización de Red:** Estrategia de almacenamiento en caché distribuida y en el borde para consultas de itinerarios recurrentes y assets del frontend.
+    *   `QA-03c y d` (Interoperabilidad con Redes Sociales y Agencia Preferida).
 
 ---
 
