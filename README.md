@@ -1,6 +1,6 @@
 # Trotamundos-Grupo23
 
-# Trotamundos — Panel de Gestión de Viajes
+# Panel de Gestión de Viajes
 
 > **Trabajo Práctico Especial (TPE)** — *Diseño de Sistemas de Software*  
 > **Universidad Nacional del Centro de la Provincia de Buenos Aires (UNICEN)** | Facultad de Ciencias Exactas  
@@ -121,23 +121,3 @@ Trotamundos-Grupo23/
     │
     └── README.md                               # Portada y guía general del proyecto
 
-```text
-Trotamundos-Grupo23/
-├── docs/                      # Documentación ADD, escenarios y vistas
-│   ├── iteration-1.md         # Paso a paso Iteración 1
-│   ├── iteration-2.md         # Paso a paso Iteración 2
-│   ├── iteration-3.md         # Paso a paso Iteración 3
-│   ├── iteration-4.md         # Paso a paso Iteración 4
-│   └── views/                 # Diagramas de C&C y Módulos (Mermaid)
-├── ADRs/                      # Architecture Decision Records (MADR)
-│   ├── 0001-multi-tier-and-api-gateway.md
-│   ├── 0002-cqrs-and-specialized-databases.md
-│   ├── 0003-adapter-pattern-for-agencies.md
-│   ├── 0004-event-driven-email-ingestion.md
-│   ├── 0005-oauth2-jwt-security.md
-│   ├── 0006-circuit-breaker-resilience.md
-│   ├── 0007-human-in-the-loop-recommendations.md
-│   └── 0008-docker-compose-deployment.md
-├── src/                       # Código fuente del prototipo backend
-├── docker-compose.yml         # Orquestación de infraestructura local
-└── README.md                  # Portada y guía general del proyecto
