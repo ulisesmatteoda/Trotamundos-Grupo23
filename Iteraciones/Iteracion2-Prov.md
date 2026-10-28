@@ -199,11 +199,13 @@ Esta vista representa la organización estática del código fuente, las interfa
 
 ```mermaid
 classDiagram
-    %% Leyenda Gráfica Simulada (Clases sueltas arriba)
-    class LEYENDA_Verde_LogicaNegocio
-    class LEYENDA_Amarillo_Eventos
-    class LEYENDA_Gris_Interfaces
-    class LEYENDA_Violeta_Adaptadores
+    %% Leyenda unificada en un solo bloque vertical
+    class LEYENDA_DE_COLORES {
+        🟩 Verde: Lógica de Negocio
+        🟨 Amarillo: Eventos Pub/Sub
+        ⬜ Gris: Interfaces (Abstractas)
+        🟪 Violeta: Adaptadores (Concretos)
+    }
 
     class ViajeService {
         +procesarReservaMail(datosReserva)
@@ -245,11 +247,8 @@ classDiagram
     IAgenciaAdapter <|.. BookingAdapter : implementa
     IAgenciaAdapter <|.. DespegarAdapter : implementa
 
-    %% Forzando texto negro en todos lados para que no falle en Dark Mode
-    style LEYENDA_Verde_LogicaNegocio fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#000000
-    style LEYENDA_Amarillo_Eventos fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#000000
-    style LEYENDA_Gris_Interfaces fill:#f8f9fa,stroke:#6c757d,stroke-width:2px,color:#000000,stroke-dasharray: 5 5
-    style LEYENDA_Violeta_Adaptadores fill:#e2d9f3,stroke:#6f42c1,stroke-width:2px,color:#000000
+    %% Estilos de colores
+    style LEYENDA_DE_COLORES fill:#f9f9f9,stroke:#666,stroke-width:1px,color:#000000,stroke-dasharray: 5 5
 
     style ViajeService fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#000000
     
