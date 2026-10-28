@@ -54,7 +54,7 @@ A partir del catálogo de tácticas y patrones de arquitectura (revisando *Maint
 **Táctica Asociada:** Separate Presentation from Core Logic / Encapsulate Locale Context.
 
 - **Por qué elegimos esta opción:**
-  Para abordar `QA-06`, se establece que el servidor y la base de datos persistan todas las marcas temporales en estándar **UTC ISO-8601**. La Capa de Presentación (Frontend) utiliza paquetes de i18n (recursos de traducción cargados bajo demanda) y módulos de tiempo/moneda para transformar las fechas y zonas horarias a la ubicación local elegida por el usuario o detectada por el navegador.
+  Para abordar `QA-06`, se establece que el servidor y la base de datos persistan todas las marcas temporales en estándar **UTC ISO-8601**. La Capa de Presentación (Frontend) utiliza paquetes de i18n (recursos de traducción cargados bajo demanda) y módulos de tiempo/moneda para formatear fechas y monedas según la región del usuario. Los horarios se expresan en la **zona horaria del lugar de cada reserva** (`QA-06d`): cada reserva transporta, junto a sus instantes UTC, la zona IANA de su origen y, si termina en otro lugar (vuelos, trenes, autobuses), la de su destino. Así, un vuelo Buenos Aires → Madrid muestra la salida en hora de Buenos Aires y la llegada en hora de Madrid, sin importar desde dónde se consulte.
 
 | Opción Evaluada | Pros | Contras | Decisión |
 | :--- | :--- | :--- | :--- |
@@ -66,7 +66,7 @@ A partir del catálogo de tácticas y patrones de arquitectura (revisando *Maint
 ## Paso 5: Instanciar elementos arquitectónicos y asignar responsabilidades
 
 1. **CDN (Edge Network):** Sirve los activos estáticos del Frontend (Single Page Application, estilos, archivos i18n JSON) y almacena en el borde respuestas públicas de la API.
-2. **Frontend App (Web/Mobile) - i18n Module & Locale Provider:** Carga los archivos de traducción según la preferencia del usuario, gestiona el formateo regional (moneda, fechas) y procesa las zonas horarias locales frente a las marcas UTC recibidas del backend.
+2. **Frontend App (Web/Mobile) - i18n Module & Locale Provider:** Carga los archivos de traducción según la preferencia del usuario, gestiona el formateo regional (moneda, fechas) según el locale del usuario y, mediante el `DateTimeFormatter`, convierte cada marca UTC recibida del backend a la zona horaria del lugar de la reserva al que corresponde (origen para el inicio, destino para el fin).
 3. **Redis In-Memory Cache:** Actúa como caché intermedia de lecturas (*Cache-Aside pattern*). Almacena representaciones JSON de los viajes e itinerarios consolidados de los usuarios para evitar re-consultar la base relacional PostgreSQL en cada navegación.
 4. **ViajeService (Cache-Aware):** Gestiona la lógica de negocio consultando primero a Redis; si hay un *Cache Miss*, lee de la DB `PostgreSQL OLTP Primary` y puebla el caché. Ante actualizaciones (edición manual o ingesta de mails), invalida las claves asociadas en Redis.
 
