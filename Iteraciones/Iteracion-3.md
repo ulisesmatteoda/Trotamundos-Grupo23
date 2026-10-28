@@ -55,14 +55,14 @@ A partir del catálogo de tácticas y patrones de arquitectura, se evalúan y se
 **Táctica Asociada:** Maintain Multiple Copies / Separate OLTP and OLAP Load / Prevent Resource Contention.
 
 - **Por qué elegimos esta opción:**
-  Las consultas analíticas pesadas (`UC-03`) pueden saturar la base transaccional si se ejecutan directamente sobre la base primaria. Se opta por un proceso de sincronización por lotes (*Batch ETL*) asistido por réplicas de lectura que extrae de PostgreSQL (OLTP), transforma los modelos relacionales a esquemas dimensionales, y los carga en el Data Warehouse (OLAP).
-- **Drivers que aborda:** `CRN-03`, `UC-03`.
+  Las consultas analíticas pesadas (`UC-03`) pueden saturar la base transaccional si se ejecutan directamente sobre la base primaria. Se opta por un proceso de sincronización por lotes (*Batch ETL*) asistido por réplicas de lectura (CDC) que extrae los datos de PostgreSQL (OLTP), transforma los modelos relacionales a esquemas dimensionales, y los carga en el Data Warehouse (OLAP).
+- **Drivers que aborda:** 
+  * **CRN-03 / UC-03** (Segregación OLAP/OLTP y Generación de Reportes).
 
 | Opción Evaluada | Pros | Contras | Decisión |
 | :--- | :--- | :--- | :--- |
-| **Opción A: Batch ETL / CDC Desacoplado** | - Cero impacto de lectura en las transacciones de usuarios en vivo.<br>- Optimizado para consultas complejas de BI. | - Latencia de consistencia eventual en reportes (minutos u horas). | **Seleccionada.** |
-| **Opción B: Consultas Directas sobre DB Operacional** | - Datos analíticos en tiempo real sin infraestructura adicional. | - Alto riesgo de bloqueos (*locks*) y degradación crítica de la performance de usuarios (`QA-01`). | *Descartada.* |
-
+| **Opción A: Batch ETL / CDC Desacoplado** | - Cero impacto de lectura en las transacciones de usuarios en vivo.<br>- Optimizado para consultas complejas de BI (Business Intelligence). | - Latencia de consistencia eventual en los reportes (minutos u horas).<br><br>**Mitigación de Trade-offs:** La latencia se mitiga definiendo un Acuerdo de Nivel de Servicio (SLA) claro con el equipo de negocio, acordando que el motor de reportes opera con datos consolidados tipo "T-1" (cierre del día anterior). Los procesos Batch más pesados se programan en ventanas temporales de bajo tráfico (madrugada). Si en el futuro el negocio exige métricas más rápidas, la base ya implementada con CDC permite escalar hacia flujos de *micro-batches* de baja latencia usando herramientas como Debezium. | **Seleccionada.** |
+| **Opción B: Consultas Directas sobre DB Operacional** | - Datos analíticos en tiempo real sin infraestructura adicional. | - Alto riesgo de bloqueos de tablas (*locks*) y degradación crítica de la performance para los usuarios que están usando la app (`QA-01`). | *Descartada.* |
 ---
 
 ### 2. Patrón: Token-Based Authentication (OAuth2 / OIDC) & Envelope Encryption
