@@ -37,15 +37,15 @@ Dado que el núcleo backend, la seguridad y la persistencia ya fueron especifica
 A partir del catálogo de tácticas y patrones de arquitectura (revisando *Maintain Multiple Copies of Data / Caching*):
 
 ### 1. Patrón: Two-Level Caching (CDN Edge + In-Memory Cache)
-**Táctica Asociada:** Maintain Multiple Copies of Data (Caching) / Reduce Computational Overhead[cite: 2].
+**Táctica Asociada:** Maintain Multiple Copies of Data (Caching) / Reduce Computational Overhead.
 
 - **Por qué elegimos esta opción:**
-  Para satisfacer `QA-01b, c`, descargar de trabajo a la base de datos primaria `PostgreSQL OLTP` y minimizar la latencia del usuario final[cite: 2]. La CDN sirve el *bundle* del frontend y recursos estáticos desde ubicaciones físicamente cercanas al usuario, mientras que Redis guarda en memoria las consultas frecuentes de itinerarios unificados (`Read-Through / Cache-Aside`).
+  Para satisfacer `QA-01b, c`, descargar de trabajo a la base de datos primaria `PostgreSQL OLTP` y minimizar la latencia del usuario final. La CDN sirve el *bundle* del frontend y recursos estáticos desde ubicaciones físicamente cercanas al usuario, mientras que Redis guarda en memoria las consultas frecuentes de itinerarios unificados (`Read-Through / Cache-Aside`).
 
 | Opción Evaluada | Pros | Contras | Decisión |
 | :--- | :--- | :--- | :--- |
-| **Opción A: Cache Distribuido (Redis) + CDN** | - Invalida latencias de red y reduce drásticamente la carga sobre la DB[cite: 2].<br>- Respuesta sub-100ms para itinerarios leídos frecuentemente. | - Requiere lógica de invalidación/TTL de caché para mantener consistencia[cite: 2]. | **Seleccionada.** |
-| **Opción B: Consultas directas a DB con índices** | - Garantiza consistencia estricta de datos. | - Mayor tiempo de respuesta y contención de recursos en picos de demanda[cite: 2]. | *Descartada.* |
+| **Opción A: Cache Distribuido (Redis) + CDN** | - Invalida latencias de red y reduce drásticamente la carga sobre la DB.<br>- Respuesta sub-100ms para itinerarios leídos frecuentemente. | - Requiere lógica de invalidación/TTL de caché para mantener consistencia. | **Seleccionada.** |
+| **Opción B: Consultas directas a DB con índices** | - Garantiza consistencia estricta de datos. | - Mayor tiempo de respuesta y contención de recursos en picos de demanda. | *Descartada.* |
 
 ---
 
