@@ -6,12 +6,52 @@ Implementación prototipo que demuestra la viabilidad de la arquitectura documen
 
 ## Cómo correrlo
 
-Requisitos: Docker con Docker Compose v2.
+### 1. Requisitos
+
+- **Git**, para clonar el repositorio.
+- **Docker** con **Docker Compose v2** (el comando es `docker compose`, sin guion).
+  - Windows / macOS: instalar [Docker Desktop](https://www.docker.com/products/docker-desktop/) y dejarlo **abierto** mientras se usa el prototipo.
+  - Linux: instalar Docker Engine y el plugin `docker-compose-plugin`. Si `docker` pide permisos, agregar el usuario al grupo (`sudo usermod -aG docker $USER` y volver a iniciar sesión) o anteponer `sudo` a los comandos.
+- Tener libres los puertos **8080**, **4000** y **15672**.
+
+Para comprobar que está todo instalado:
 
 ```bash
-cd prototipo
+git --version
+docker --version
+docker compose version
+```
+
+No hace falta instalar Node, PostgreSQL, Redis ni RabbitMQ: todo corre dentro de los contenedores. Tampoco hace falta crear un archivo `.env`; la configuración de demo ya está en `docker-compose.yml`.
+
+### 2. Clonar el repositorio
+
+```bash
+git clone https://github.com/ulisesmatteoda/Trotamundos-Grupo23.git
+cd Trotamundos-Grupo23/prototipo
+```
+
+### 3. Levantar el prototipo
+
+Desde la carpeta `prototipo`:
+
+```bash
 docker compose up --build
 ```
+
+La primera vez tarda varios minutos (descarga las imágenes y compila el backend y el frontend). Está listo cuando los logs dejan de avanzar y aparece `[api] escuchando en :3000` en los logs del backend. Se puede verificar desde otra terminal:
+
+```bash
+docker compose ps
+```
+
+Todos los servicios tienen que figurar como `running` / `healthy`.
+
+> Para dejarlo corriendo en segundo plano usar `docker compose up --build -d` y ver los logs con `docker compose logs -f`.
+
+### 4. Entrar a la aplicación
+
+Abrir http://localhost:8080 en el navegador e iniciar sesión con `ana@trotamundos.test` / `demo1234` (ver [Usuarios de demo](#usuarios-de-demo)).
 
 | Qué | URL |
 |---|---|
@@ -19,6 +59,22 @@ docker compose up --build
 | Estado del backend | http://localhost:8080/api/health |
 | Consola de RabbitMQ (Event Bus) | http://localhost:15672 (usuario `trotamundos` / `trotamundos`) |
 | Simulador de sistemas externos (correo, agencias) | http://localhost:4000 |
+
+### 5. Detenerlo
+
+- `Ctrl + C` en la terminal donde corre (o `docker compose stop`) lo frena conservando los datos.
+- `docker compose down` borra los contenedores; `docker compose down -v` además borra las bases y la próxima vez arranca con los datos de demo iniciales.
+
+### Problemas comunes
+
+| Síntoma | Solución |
+|---|---|
+| `Cannot connect to the Docker daemon` | Docker Desktop no está abierto (Windows/macOS) o el servicio no está iniciado (Linux: `sudo systemctl start docker`) |
+| `permission denied ... docker.sock` | En Linux, usar `sudo` o agregar el usuario al grupo `docker` (ver Requisitos) |
+| `port is already allocated` / `address already in use` | Otro programa usa el puerto 8080, 4000 o 15672: cerrarlo y volver a levantar |
+| `docker-compose: command not found` o errores de sintaxis del compose | Se está usando Compose v1; usar `docker compose` (v2) |
+| La página no carga o da 502 apenas se levanta | El backend todavía está iniciando: esperar unos segundos a que `docker compose ps` lo muestre `healthy` |
+| Errores raros después de actualizar el repo (`git pull`) | Reconstruir con la base limpia: `docker compose down -v && docker compose up --build` |
 
 ### Usuarios de demo
 
