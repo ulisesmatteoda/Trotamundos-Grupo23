@@ -110,5 +110,102 @@ Aquí se instancian los patrones *Domain Model* y *Publish-Subscribe*, desglosan
 
 ### 5. Capa de Datos (Persistencia)
 *   **Influencia de los Patrones:** Da soporte directo a la persistencia del *Domain Model* sin contaminarlo con lógica SQL.
+
+
 *   **Elementos y Responsabilidades:** El acceso a la Base de Datos Operacional (OLTP) se realiza mediante **Repositorios (Data Access Layer)**. Estos repositorios actúan como mapeadores (Data Mappers / ORM), encargándose de transformar las filas relacionales de las tablas en instancias vivas de las entidades del modelo de dominio, aislando al núcleo del sistema de los detalles del motor de base de datos.
+
+### Paso 6: Definir Interfaces y Vistas Arquitectónicas (C&C y Módulos)
+En este paso se formalizan los contratos de interfaz y se construyen las vistas estáticas y dinámicas que documentan el comportamiento de la capa de integración de agencias (patrón Adapter) y el procesamiento asincrónico de correos (patrón Publisher-Subscriber).
+
+### Vista 1: Vista C&C (Componentes y Conectores - Tiempo de Ejecución)
+Esta vista modela el comportamiento dinámico del sistema en tiempo de ejecución, mostrando cómo fluyen las peticiones de integración y los eventos asincrónicos de correos a través de la red y el bus de mensajes.
+
+```mermaid
+graph TD
+    %% Entidades Externas
+    subgraph Externos["Entidades Externas"]
+        UserMail["Mail de Reserva del Usuario"]
+        AgenciaAPI["APIs Agencias (Booking / Despegar / Airbnb)"]
+    end
+
+    %% Backend Trotamundos
+    subgraph Backend["Backend Trotamundos"]
+
+        %% Canal Pub/Sub de Mails
+        subgraph SubsystemMail["Módulo de Ingesta Asincrónica (EDA / Pub-Sub)"]
+            EmailIngestion["Email Ingestion Listener (Publisher)"]
+            EventBus(("Event Bus / Message Broker"))
+            EmailSubscriber["Itinerario Email Consumer (Subscriber)"]
+        end
+
+        %% Core de Negocio
+        DomainLogic["Lógica de Negocio (ViajeService / Itinerarios)"]
+
+        %% Capa de Integración / Adaptadores
+        subgraph SubsystemIntegrations["Capa de Integración de Agencias (Adapter)"]
+            AdapterInterface["<<Interface>> IAgenciaAdapter"]
+            BookingAdapter["BookingAdapter"]
+            DespegarAdapter["DespegarAdapter"]
+        end
+    end
+
+    %% Relaciones / Conectores
+    UserMail -->|"Push/Webhook"| EmailIngestion
+    EmailIngestion -->|"Publica Evento (ReservaRecibida)"| EventBus
+    EventBus -->|"Consume Evento asincrónicamente"| EmailSubscriber
+    EmailSubscriber -->|"Llama a API local"| DomainLogic
+    
+    DomainLogic -->|"Delega petición"| AdapterInterface
+    AdapterInterface -.->|"Implementado por"| BookingAdapter
+    AdapterInterface -.->|"Implementado por"| DespegarAdapter
+    
+    BookingAdapter -->|"Petición HTTP/REST"| AgenciaAPI
+    DespegarAdapter -->|"Petición HTTP/REST"| AgenciaAPI
+```
+
+### Vista 2: Vista de Módulos (Estructura de Código / Clases e Interfaces)
+Esta vista representa la organización estática del código fuente, las interfaces y las relaciones de dependencia bajo la regla de dependencias allowed-to-use.
+
+```mermaid
+classDiagram
+    class ViajeService {
+        +procesarReservaMail(datosReserva)
+        +sincronizarConAgencia(agenciaId)
+    }
+
+    class IAgenciaAdapter {
+        <<interface>>
+        +obtenerDetallesReserva(reservaId)
+        +sincronizarItinerario(usuarioId)
+    }
+
+    class BookingAdapter {
+        -apiClient
+        +obtenerDetallesReserva(reservaId)
+        +sincronizarItinerario(usuarioId)
+    }
+
+    class DespegarAdapter {
+        -apiClient
+        +obtenerDetallesReserva(reservaId)
+        +sincronizarItinerario(usuarioId)
+    }
+    
+    class EmailIngestionListener {
+        +recibirEmail(payload)
+        +publicarEventoEnBus(evento)
+    }
+
+    class ItinerarioEmailConsumer {
+        +consumirEvento(mensaje)
+        +extraerDatosViaje(mensaje)
+    }
+
+    %% Relaciones de dependencia (allowed-to-use) y realización
+    ItinerarioEmailConsumer --> ViajeService : invoca
+    ViajeService --> IAgenciaAdapter : usa
+    
+    IAgenciaAdapter <|.. BookingAdapter : implementa
+    IAgenciaAdapter <|.. DespegarAdapter : implementa
+```
 
