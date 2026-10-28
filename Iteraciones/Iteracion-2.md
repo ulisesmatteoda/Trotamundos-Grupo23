@@ -60,7 +60,7 @@ A continuación, se detallan los dos conceptos de diseño principales selecciona
 
 | Opción Evaluada | Pros | Contras | Decisión |
 | :--- | :--- | :--- | :--- |
-| **Opción A: Anti-Corruption Layer (ACL) e Interfaces** | - Aísla al Core (ViajeService) de cambios externos.<br>- Permite resolver actualizaciones de terceros en menos de 2 días-persona (**QA-05b**).<br>- Facilita agregar nuevas agencias sin tocar el código central (**QA-05a**). | - Introduce un ligero *overhead* de procesamiento por la traducción de datos.<br>- Requiere mayor esfuerzo inicial para definir las interfaces abstractas. | **Seleccionada.** |
+| **Opción A: Anti-Corruption Layer (ACL) e Interfaces** | - Aísla al Core (ViajeService) de cambios externos.<br>- Permite resolver actualizaciones de terceros en menos de 2 días-persona (**QA-05b**).<br>- Facilita agregar nuevas agencias sin tocar el código central (**QA-05a**). | - Introduce un ligero *overhead* de procesamiento por la traducción de datos.<br>- Requiere mayor esfuerzo inicial para definir las interfaces abstractas.<br><br>**Mitigación de Trade-offs:** El *overhead* se minimiza utilizando librerías de mapeo eficientes (ej. MapStruct o equivalentes). El esfuerzo de diseño inicial se acota definiendo primero un modelo unificado básico y construyendo los adaptadores de forma iterativa solo cuando se necesite integrar una nueva agencia. | **Seleccionada.** |
 | **Opción B: Integración Directa (Punto a Punto)** | - Desarrollo inicial más rápido.<br>- Menor cantidad de clases y abstracciones en el código. | - Alto acoplamiento. Cualquier cambio en la API de Despegar rompe la lógica de negocio core.<br>- Imposibilita cumplir con la mantenibilidad requerida (**QA-05**). | *Descartada.* |
 
 ---
@@ -77,9 +77,8 @@ A continuación, se detallan los dos conceptos de diseño principales selecciona
 
 | Opción Evaluada | Pros | Contras | Decisión |
 | :--- | :--- | :--- | :--- |
-| **Opción A: Publish-Subscribe mediante Event Bus** | - Desacopla totalmente la ingesta (Listener) del procesamiento (Consumer).<br>- Amortigua picos de tráfico de correos.<br>- Garantiza que los hilos HTTP del usuario no se bloqueen. | - Añade complejidad de infraestructura (hay que mantener un Bus/Broker).<br>- La trazabilidad de los eventos asincrónicos es más compleja. | **Seleccionada.** |
+| **Opción A: Publish-Subscribe mediante Event Bus** | - Desacopla totalmente la ingesta (Listener) del procesamiento (Consumer).<br>- Amortigua picos de tráfico de correos.<br>- Garantiza que los hilos HTTP del usuario no se bloqueen. | - Añade complejidad de infraestructura (hay que mantener un Bus/Broker).<br>- La trazabilidad de los eventos asincrónicos es más compleja.<br><br>**Mitigación de Trade-offs:** La complejidad de infraestructura se reduce delegando el Message Broker a un servicio gestionado en la nube (Paas/Managed Service como AWS SQS/SNS o RabbitMQ alojado). La trazabilidad se asegura implementando un **Correlation ID** único inyectado desde el Listener, el cual viaja con el mensaje y se registra en todos los logs de los workers para rastrear el ciclo de vida completo del evento. | **Seleccionada.** |
 | **Opción B: Procesamiento Sincrónico Directo In-Memory** | - Arquitectura mucho más simple (sin infraestructura extra).<br>- Trazabilidad y debugging directo en el mismo hilo de ejecución. | - Ante un pico de correos, los hilos se agotan y el servidor colapsa (**QA-07a**).<br>- Si el servidor se reinicia, se pierden los correos en memoria. | *Descartada.* |
-
 ---
 
 ## Paso 5: Instanciar elementos arquitectónicos y asignar responsabilidades
