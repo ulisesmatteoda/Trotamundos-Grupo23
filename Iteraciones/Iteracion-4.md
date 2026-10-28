@@ -1,4 +1,4 @@
-# Iteración 4: Internacionalización (i18n), Usabilidad y Optimización de Caché/Latencia
+# Iteración 4: Internacionalización (i18n), Usabilidad y Optimización de Caché/Latencia.
 
 ## Paso 1: Revisión de entradas
 
