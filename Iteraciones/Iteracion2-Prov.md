@@ -114,6 +114,8 @@ Aquí se instancian los patrones *Domain Model* y *Publish-Subscribe*, desglosan
 
 *   **Elementos y Responsabilidades:** El acceso a la Base de Datos Operacional (OLTP) se realiza mediante **Repositorios (Data Access Layer)**. Estos repositorios actúan como mapeadores (Data Mappers / ORM), encargándose de transformar las filas relacionales de las tablas en instancias vivas de las entidades del modelo de dominio, aislando al núcleo del sistema de los detalles del motor de base de datos.
 
+---
+
 ### Paso 6: Definir Interfaces y Vistas Arquitectónicas (C&C y Módulos)
 En este paso se formalizan los contratos de interfaz y se construyen las vistas estáticas y dinámicas que documentan el comportamiento de la capa de integración de agencias (patrón Adapter) y el procesamiento asincrónico de correos (patrón Publisher-Subscriber).
 
@@ -122,11 +124,11 @@ Esta vista modela el comportamiento dinámico del sistema en tiempo de ejecució
 
 ```mermaid
 graph TD
-    %% Definición de estilos y colores
-    classDef externo fill:#f8d7da,stroke:#dc3545,stroke-width:2px,color:#721c24;
-    classDef pubsub fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#856404;
-    classDef core fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#155724;
-    classDef adapter fill:#cce5ff,stroke:#007bff,stroke-width:2px,color:#004085;
+    %% Definición de estilos forzando texto negro para Dark Mode
+    classDef externo fill:#f8d7da,stroke:#dc3545,stroke-width:2px,color:#000000;
+    classDef pubsub fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#000000;
+    classDef core fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#000000;
+    classDef adapter fill:#cce5ff,stroke:#007bff,stroke-width:2px,color:#000000;
 
     %% Entidades Externas
     subgraph Externos["Entidades Externas"]
@@ -146,6 +148,7 @@ graph TD
 
         %% Core de Negocio
         DomainLogic["Lógica de Negocio (ViajeService / Itinerarios)"]:::core
+        DB[(DB PostgreSQL)]:::core
 
         %% Capa de Integración / Adaptadores
         subgraph SubsystemIntegrations["Capa de Integración de Agencias (Adapter)"]
@@ -157,35 +160,51 @@ graph TD
 
     %% Relaciones / Conectores
     UserMail -->|"Push/Webhook"| EmailIngestion
-    EmailIngestion -->|"Publica Evento (ReservaRecibida)"| EventBus
-    EventBus -->|"Consume Evento asincrónicamente"| EmailSubscriber
+    EmailIngestion -->|"Publica Evento"| EventBus
+    EventBus -->|"Consume Evento"| EmailSubscriber
     EmailSubscriber -->|"Llama a API local"| DomainLogic
     
+    DomainLogic -->|"Guarda itinerario"| DB
     DomainLogic -->|"Delega petición"| AdapterInterface
     AdapterInterface -.->|"Implementado por"| BookingAdapter
     AdapterInterface -.->|"Implementado por"| DespegarAdapter
     
     BookingAdapter -->|"Petición HTTP/REST"| AgenciaAPI
     DespegarAdapter -->|"Petición HTTP/REST"| AgenciaAPI
+
+    %% Leyenda Gráfica Dibujada
+    subgraph Leyenda["Leyenda de Colores"]
+        L1[Rojo: Entidades Externas]:::externo
+        L2[Amarillo: Módulo Pub/Sub]:::pubsub
+        L3[Verde: Core de Negocio & DB]:::core
+        L4[Azul: Adaptadores e Interfaces]:::adapter
+    end
+    
+    L1 ~~~ L2 ~~~ L3 ~~~ L4
+    style Leyenda fill:transparent,stroke:#666,stroke-width:1px,stroke-dasharray: 5 5,color:#fff
 ```
 
 #### Leyenda y Explicación de la Vista 1 (C&C)
-*   **UserMail → EmailIngestion (Webhook/IMAP):** Entrada del correo enviado por el usuario con su comprobante de reserva.
-*   **EmailIngestion (Publisher):** Recibe el correo bruto, extrae los metadatos básicos y publica un evento `NuevoMailReservaEvent` de forma asincrónica.
-*   **EventBus (Message Broker):** Conector de desacoplamiento temporal y espacial que distribuye eventos a los suscriptores interesados.
-*   **EmailSubscriber (Subscriber):** Escucha el tópico de eventos de correo, parsea la información y convoca a la lógica de dominio.
-*   **IAgenciaAdapter + Adaptadores:** Capa intermedia que homogeneiza las respuestas heterogéneas de las APIs externas (Booking, Despegar) hacia un modelo de datos unificado dentro de Trotamundos.
-*   **Leyenda de Colores del Gráfico:** **Rojo:** Entidades Externas | **Amarillo:** Módulo Pub/Sub |  **Verde:** Core de Negocio |  **Azul:** Adaptadores e Interfaces.
+* **UserMail → EmailIngestion (Webhook/IMAP):** Entrada del correo enviado por el usuario con su comprobante de reserva.
+* **EmailIngestion (Publisher):** Recibe el correo bruto, extrae los metadatos básicos y publica un evento `NuevoMailReservaEvent` de forma asincrónica.
+* **EventBus (Message Broker):** Conector de desacoplamiento temporal y espacial que distribuye eventos a los suscriptores interesados.
+* **EmailSubscriber (Subscriber):** Escucha el tópico de eventos de correo, parsea la información y convoca a la lógica de dominio.
+* **IAgenciaAdapter + Adaptadores:** Capa intermedia que homogeneiza las respuestas heterogéneas de las APIs externas (Booking, Despegar) hacia un modelo de datos unificado dentro de Trotamundos.
+* **DB (PostgreSQL):** Almacenamiento final relacional donde la lógica de negocio guarda el itinerario actualizado.
 
 ---
 
 ### Vista 2: Vista de Módulos (Estructura de Código / Clases e Interfaces)
 Esta vista representa la organización estática del código fuente, las interfaces y las relaciones de dependencia bajo la regla de dependencias allowed-to-use.
 
-**Leyenda de Colores:**  **Verde:** Lógica de Negocio |  **Amarillo:** Eventos Pub/Sub |  **Gris Punteado:** Interfaces |  **Violeta:** Implementaciones de Adaptadores.
-
 ```mermaid
 classDiagram
+    %% Leyenda Gráfica Simulada (Clases sueltas arriba)
+    class LEYENDA_Verde_LogicaNegocio
+    class LEYENDA_Amarillo_Eventos
+    class LEYENDA_Gris_Interfaces
+    class LEYENDA_Violeta_Adaptadores
+
     class ViajeService {
         +procesarReservaMail(datosReserva)
         +sincronizarConAgencia(agenciaId)
@@ -226,12 +245,25 @@ classDiagram
     IAgenciaAdapter <|.. BookingAdapter : implementa
     IAgenciaAdapter <|.. DespegarAdapter : implementa
 
-    %% Aplicación de colores directos a las clases
-    style ViajeService fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#155724
+    %% Forzando texto negro en todos lados para que no falle en Dark Mode
+    style LEYENDA_Verde_LogicaNegocio fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#000000
+    style LEYENDA_Amarillo_Eventos fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#000000
+    style LEYENDA_Gris_Interfaces fill:#f8f9fa,stroke:#6c757d,stroke-width:2px,color:#000000,stroke-dasharray: 5 5
+    style LEYENDA_Violeta_Adaptadores fill:#e2d9f3,stroke:#6f42c1,stroke-width:2px,color:#000000
+
+    style ViajeService fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#000000
     
-    style EmailIngestionListener fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#856404
-    style ItinerarioEmailConsumer fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#856404
+    style EmailIngestionListener fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#000000
+    style ItinerarioEmailConsumer fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#000000
     
-    style IAgenciaAdapter fill:#f8f9fa,stroke:#6c757d,stroke-width:2px,color:#495057,stroke-dasharray: 5 5
+    style IAgenciaAdapter fill:#f8f9fa,stroke:#6c757d,stroke-width:2px,color:#000000,stroke-dasharray: 5 5
     
-    style BookingAdapter fill:#e2d9f3,stroke:#6f42c1,stroke-width:2px
+    style BookingAdapter fill:#e2d9f3,stroke:#6f42c1,stroke-width:2px,color:#000000
+    style DespegarAdapter fill:#e2d9f3,stroke:#6f42c1,stroke-width:2px,color:#000000
+```
+
+#### Leyenda y Explicación de la Vista 2 (Módulos)
+* **ViajeService:** Módulo central del dominio que contiene la lógica de negocio para armar itinerarios. Solo conoce la interfaz `IAgenciaAdapter` y desconoce la existencia de las agencias específicas.
+* **IAgenciaAdapter:** Contrato que define las operaciones estándar que el dominio requiere de cualquier agencia externa. Actúa como barrera de protección frente a cambios de terceros.
+* **BookingAdapter / DespegarAdapter:** Implementaciones concretas de la interfaz. Encapsulan la lógica específica, endpoints, y mapeo de datos de cada API externa para transformarlos al modelo interno de Trotamundos.
+* **EmailIngestionListener & ItinerarioEmailConsumer:** Clases encargadas de la ingesta asincrónica. El Listener publica el evento al bus, mientras que el Consumer lo escucha e inicia el procesamiento en el dominio.
