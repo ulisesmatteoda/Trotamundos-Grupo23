@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "trotamundos/events/CasoSoportePendienteEvent",
+  "title": "CasoSoportePendienteEvent",
+  "description": "Publicado por SoporteService cuando la agencia no responde dentro del timeout; consumido por SoporteRetryConsumer (ADR-009, Iteración 5). Fase 5.",
+  "type": "object",
+  "required": ["tipo", "correlationId", "publicadoEn", "casoId", "intento"],
+  "properties": {
+    "tipo": { "const": "CasoSoportePendienteEvent" },
+    "correlationId": { "type": "string", "format": "uuid" },
+    "publicadoEn": { "type": "string", "format": "date-time" },
+    "casoId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "También se usa como clave de idempotencia ante la agencia"
+    },
+    "intento": { "type": "integer", "minimum": 1 }
+  }
+}

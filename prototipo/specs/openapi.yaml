@@ -1,0 +1,745 @@
+openapi: 3.0.3
+info:
+  title: Trotamundos API
+  version: 0.1.0
+  description: |
+    Contrato de la API REST expuesta por el API Gateway de Trotamundos (CON-03, Spec-driven).
+    Todas las rutas se sirven bajo el prefijo `/api` a través del Gateway (ADR-001).
+
+    Convenciones:
+    - Todas las fechas viajan en UTC, formato ISO-8601 (ADR-008).
+    - Los textos no se traducen en el backend; el cliente localiza (ADR-008).
+    - Toda ruta, salvo las marcadas con `security: []`, requiere un JWT válido (ADR-005).
+
+    Cada operación indica en `x-fase` la fase del prototipo que la implementa y en
+    `x-trazabilidad` el driver / ADR que la origina.
+servers:
+  - url: /api
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Sistema
+  - name: Autenticación
+  - name: Viajes
+  - name: Reservas
+  - name: Correo
+  - name: Integraciones
+  - name: Compartir
+  - name: Soporte
+
+paths:
+  /health:
+    get:
+      tags: [Sistema]
+      summary: Estado del backend y de sus dependencias
+      security: []
+      x-fase: 0
+      x-trazabilidad: [QA-02]
+      responses:
+        "200":
+          description: Todas las dependencias responden
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+        "503":
+          description: Alguna dependencia no responde
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+
+  /auth/login:
+    post:
+      tags: [Autenticación]
+      summary: Obtiene un JWT
+      security: []
+      x-fase: 1
+      x-trazabilidad: [QA-04, ADR-005]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        "200":
+          description: Credenciales válidas
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token, usuario]
+                properties:
+                  token: { type: string }
+                  usuario: { $ref: "#/components/schemas/Usuario" }
+        "401": { $ref: "#/components/responses/NoAutorizado" }
+
+  /viajes:
+    get:
+      tags: [Viajes]
+      summary: Lista los viajes del usuario con sus reservas agrupadas
+      x-fase: 1
+      x-trazabilidad: [UC-02, QA-01b, ADR-007]
+      parameters:
+        - name: archivados
+          in: query
+          description: Si es true, devuelve los viajes archivados en lugar de los activos
+          schema: { type: boolean, default: false }
+      responses:
+        "200":
+          description: Viajes del usuario
+          headers:
+            X-Cache:
+              description: HIT o MISS según el Cache-Aside (desde Fase 3)
+              schema: { type: string, enum: [HIT, MISS] }
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Viaje" }
+        "401": { $ref: "#/components/responses/NoAutorizado" }
+    post:
+      tags: [Viajes]
+      summary: Crea un viaje
+      x-fase: 1
+      x-trazabilidad: [UC-02]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ViajeInput" }
+      responses:
+        "201":
+          description: Viaje creado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Viaje" }
+        "400": { $ref: "#/components/responses/Invalido" }
+        "401": { $ref: "#/components/responses/NoAutorizado" }
+
+  /viajes/{viajeId}:
+    parameters:
+      - $ref: "#/components/parameters/ViajeId"
+    get:
+      tags: [Viajes]
+      summary: Obtiene un viaje con sus reservas
+      x-fase: 1
+      x-trazabilidad: [UC-02]
+      responses:
+        "200":
+          description: Viaje
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Viaje" }
+        "401": { $ref: "#/components/responses/NoAutorizado" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+    put:
+      tags: [Viajes]
+      summary: Actualiza un viaje
+      x-fase: 1
+      x-trazabilidad: [UC-02]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ViajeInput" }
+      responses:
+        "200":
+          description: Viaje actualizado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Viaje" }
+        "400": { $ref: "#/components/responses/Invalido" }
+        "401": { $ref: "#/components/responses/NoAutorizado" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+    delete:
+      tags: [Viajes]
+      summary: Elimina un viaje y sus reservas
+      x-fase: 1
+      x-trazabilidad: [UC-02]
+      responses:
+        "204": { description: Eliminado }
+        "401": { $ref: "#/components/responses/NoAutorizado" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+
+  /viajes/{viajeId}/reservas:
+    parameters:
+      - $ref: "#/components/parameters/ViajeId"
+    post:
+      tags: [Reservas]
+      summary: Agrega manualmente una reserva a un viaje
+      x-fase: 1
+      x-trazabilidad: [UC-02, QA-06b]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReservaInput" }
+      responses:
+        "201":
+          description: Reserva creada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Reserva" }
+        "400": { $ref: "#/components/responses/Invalido" }
+        "401": { $ref: "#/components/responses/NoAutorizado" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+
+  /reservas/{reservaId}:
+    parameters:
+      - $ref: "#/components/parameters/ReservaId"
+    put:
+      tags: [Reservas]
+      summary: Actualiza una reserva
+      x-fase: 1
+      x-trazabilidad: [UC-02]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReservaInput" }
+      responses:
+        "200":
+          description: Reserva actualizada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Reserva" }
+        "400": { $ref: "#/components/responses/Invalido" }
+        "401": { $ref: "#/components/responses/NoAutorizado" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+    delete:
+      tags: [Reservas]
+      summary: Elimina una reserva
+      x-fase: 1
+      x-trazabilidad: [UC-02]
+      responses:
+        "204": { description: Eliminada }
+        "401": { $ref: "#/components/responses/NoAutorizado" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+
+  /whitelist:
+    get:
+      tags: [Correo]
+      summary: Lista los remitentes seguros del usuario
+      x-fase: 2
+      x-trazabilidad: [QA-03b]
+      responses:
+        "200":
+          description: Remitentes seguros
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/RemitenteSeguro" }
+        "401": { $ref: "#/components/responses/NoAutorizado" }
+    post:
+      tags: [Correo]
+      summary: Agrega un remitente seguro
+      x-fase: 2
+      x-trazabilidad: [QA-03b]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [remitente]
+              properties:
+                remitente:
+                  type: string
+                  description: Dirección exacta o dominio con prefijo "@" (ej. "@booking.com")
+      responses:
+        "201":
+          description: Remitente agregado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RemitenteSeguro" }
+        "400": { $ref: "#/components/responses/Invalido" }
+        "401": { $ref: "#/components/responses/NoAutorizado" }
+
+  /whitelist/{remitenteId}:
+    delete:
+      tags: [Correo]
+      summary: Elimina un remitente seguro
+      x-fase: 2
+      x-trazabilidad: [QA-03b]
+      parameters:
+        - name: remitenteId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204": { description: Eliminado }
+        "401": { $ref: "#/components/responses/NoAutorizado" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+
+  /correo/conexion:
+    get:
+      tags: [Correo]
+      summary: Estado de la conexión con el proveedor de correo del usuario
+      x-fase: 4
+      x-trazabilidad: [CON-02, QA-04c]
+      responses:
+        "200":
+          description: Estado de la conexión (nunca devuelve el token)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConexionCorreo" }
+        "401": { $ref: "#/components/responses/NoAutorizado" }
+    post:
+      tags: [Correo]
+      summary: Registra el token OAuth2 obtenido del proveedor de correo (flujo simulado)
+      x-fase: 4
+      x-trazabilidad: [CON-02, QA-04a, QA-04d, ADR-005]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [proveedor, casilla, accessToken]
+              properties:
+                proveedor: { type: string, enum: [gmail, outlook] }
+                casilla: { type: string, format: email }
+                accessToken:
+                  type: string
+                  description: Se persiste cifrado con Envelope Encryption
+      responses:
+        "201":
+          description: Conexión registrada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConexionCorreo" }
+        "400": { $ref: "#/components/responses/Invalido" }
+        "401": { $ref: "#/components/responses/NoAutorizado" }
+    delete:
+      tags: [Correo]
+      summary: Revoca el acceso al correo y elimina los tokens
+      x-fase: 4
+      x-trazabilidad: [QA-04c]
+      responses:
+        "204": { description: Acceso revocado }
+        "401": { $ref: "#/components/responses/NoAutorizado" }
+
+  /ingesta/email:
+    post:
+      tags: [Integraciones]
+      summary: Webhook del proveedor de correo (EmailIngestionListener)
+      description: |
+        Recibe el correo bruto, publica un NuevoMailReservaEvent en el Event Bus
+        y responde de inmediato sin procesarlo (ADR-003).
+        Se autentica con un secreto compartido con el proveedor, no con JWT.
+      security:
+        - webhookSecret: []
+      x-fase: 2
+      x-trazabilidad: [UC-01, QA-01a, CRN-02, ADR-003]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CorreoEntrante" }
+      responses:
+        "202":
+          description: Correo aceptado y publicado en el Event Bus
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [correlationId]
+                properties:
+                  correlationId: { type: string, format: uuid }
+        "401": { $ref: "#/components/responses/NoAutorizado" }
+
+  /integraciones/agencias/{proveedor}/webhook:
+    post:
+      tags: [Integraciones]
+      summary: Webhook de actualizaciones y cancelaciones de un proveedor de reservas
+      description: |
+        El cuerpo tiene el formato propietario de cada proveedor. El adaptador
+        correspondiente (IAgenciaAdapter) lo traduce al modelo canónico (ADR-002).
+      security:
+        - webhookSecret: []
+      x-fase: 2
+      x-trazabilidad: [QA-03a, QA-05b, ADR-002]
+      parameters:
+        - name: proveedor
+          in: path
+          required: true
+          schema: { type: string, example: booking }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "202": { description: Actualización aplicada }
+        "401": { $ref: "#/components/responses/NoAutorizado" }
+        "404":
+          description: No hay un adaptador registrado para ese proveedor
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /viajes/{viajeId}/compartir:
+    parameters:
+      - $ref: "#/components/parameters/ViajeId"
+    post:
+      tags: [Compartir]
+      summary: Comparte un viaje con personas designadas y opcionalmente lo publica en una red social
+      x-fase: 4
+      x-trazabilidad: [QA-04b, QA-03c, ADR-010, ADR-009]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [designados]
+              properties:
+                designados:
+                  type: array
+                  minItems: 1
+                  items: { type: string, format: email }
+                redSocial:
+                  type: string
+                  enum: [facebook, x]
+                  description: Si se indica, se publica texto + enlace (nunca el itinerario). Desde Fase 5.
+      responses:
+        "201":
+          description: Viaje compartido
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Compartido" }
+        "400": { $ref: "#/components/responses/Invalido" }
+        "401": { $ref: "#/components/responses/NoAutorizado" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+        "502":
+          description: El viaje se compartió pero la red social rechazó la publicación
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /compartidos/{enlaceId}:
+    get:
+      tags: [Compartir]
+      summary: Abre un itinerario compartido (solo personas designadas)
+      x-fase: 4
+      x-trazabilidad: [QA-04b, ADR-010]
+      parameters:
+        - name: enlaceId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Itinerario compartido
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Viaje" }
+        "401": { $ref: "#/components/responses/NoAutorizado" }
+        "403":
+          description: La persona no está designada; el intento queda registrado
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+    delete:
+      tags: [Compartir]
+      summary: Revoca un compartido (solo el dueño)
+      x-fase: 4
+      x-trazabilidad: [QA-04b, ADR-010]
+      parameters:
+        - name: enlaceId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204": { description: Revocado }
+        "401": { $ref: "#/components/responses/NoAutorizado" }
+        "403":
+          description: Solo el dueño puede revocar
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+
+  /reservas/{reservaId}/asistencia:
+    parameters:
+      - $ref: "#/components/parameters/ReservaId"
+    post:
+      tags: [Soporte]
+      summary: Deriva un problema con la reserva a la agencia preferida
+      description: |
+        El SoporteService arma el contexto completo de la reserva y llama a la agencia con
+        timeout de 2 s. Si falla, publica un CasoSoportePendienteEvent y responde con el caso
+        en estado PENDIENTE (ADR-009).
+      x-fase: 5
+      x-trazabilidad: [QA-03d, QA-06c, ADR-009]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                descripcion: { type: string, maxLength: 500 }
+      responses:
+        "201":
+          description: Caso derivado o registrado como pendiente
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CasoSoporte" }
+        "401": { $ref: "#/components/responses/NoAutorizado" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+
+  /casos/{casoId}:
+    get:
+      tags: [Soporte]
+      summary: Estado de un caso de soporte
+      x-fase: 5
+      x-trazabilidad: [QA-03d, QA-06c]
+      parameters:
+        - name: casoId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Caso de soporte
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CasoSoporte" }
+        "401": { $ref: "#/components/responses/NoAutorizado" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    webhookSecret:
+      type: apiKey
+      in: header
+      name: X-Webhook-Secret
+
+  parameters:
+    ViajeId:
+      name: viajeId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ReservaId:
+      name: reservaId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+  responses:
+    NoAutorizado:
+      description: Falta el JWT, es inválido o expiró
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NoEncontrado:
+      description: El recurso no existe o no pertenece al usuario
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Invalido:
+      description: El cuerpo no cumple el contrato
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    Error:
+      type: object
+      required: [codigo]
+      properties:
+        codigo:
+          type: string
+          description: Código estable; el cliente lo traduce (ADR-008)
+          example: VIAJE_NO_ENCONTRADO
+        detalle:
+          type: object
+          additionalProperties: true
+
+    Health:
+      type: object
+      required: [estado, dependencias]
+      properties:
+        estado: { type: string, enum: [ok, degradado] }
+        instancia:
+          type: string
+          description: Hostname de la réplica que respondió (útil para ver el balanceo)
+        dependencias:
+          type: object
+          properties:
+            postgres: { type: string, enum: [ok, error] }
+            redis: { type: string, enum: [ok, error] }
+            rabbitmq: { type: string, enum: [ok, error] }
+
+    Usuario:
+      type: object
+      required: [id, email, nombre]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        nombre: { type: string }
+        localePreferido: { type: string, example: es-AR }
+
+    ViajeInput:
+      type: object
+      required: [nombre]
+      properties:
+        nombre: { type: string, minLength: 1, maxLength: 120 }
+        destino: { type: string, maxLength: 120 }
+
+    Viaje:
+      allOf:
+        - $ref: "#/components/schemas/ViajeInput"
+        - type: object
+          required: [id, estado, reservas]
+          properties:
+            id: { type: string, format: uuid }
+            estado: { type: string, enum: [ACTIVO, ARCHIVADO] }
+            inicio:
+              type: string
+              format: date-time
+              nullable: true
+              description: Derivado de la primera reserva (UTC)
+            fin:
+              type: string
+              format: date-time
+              nullable: true
+              description: Derivado de la última reserva (UTC); usado por el archivado automático
+            reservas:
+              type: array
+              items: { $ref: "#/components/schemas/Reserva" }
+
+    TipoReserva:
+      type: string
+      description: |
+        Tipo de reserva. Es un string y no un enum cerrado para poder incorporar
+        nuevos medios de transporte sin cambiar el contrato (QA-05a).
+        Valores conocidos: VUELO, HOTEL, AUTO, TREN, BUS.
+      example: VUELO
+
+    Ubicacion:
+      type: object
+      required: [zonaHoraria]
+      properties:
+        direccion: { type: string }
+        lat: { type: number }
+        lng: { type: number }
+        zonaHoraria:
+          type: string
+          description: Zona IANA del lugar de la reserva, para mostrar horarios locales (QA-06d)
+          example: Europe/Madrid
+
+    Monto:
+      type: object
+      required: [valor, moneda]
+      properties:
+        valor: { type: number }
+        moneda:
+          type: string
+          description: Código ISO-4217; el cliente lo formatea (ADR-008)
+          example: EUR
+
+    ReservaInput:
+      type: object
+      required: [tipo, titulo, inicio]
+      properties:
+        tipo: { $ref: "#/components/schemas/TipoReserva" }
+        titulo: { type: string, minLength: 1, maxLength: 160 }
+        proveedor: { type: string, example: Iberia }
+        codigoConfirmacion: { type: string }
+        inicio: { type: string, format: date-time }
+        fin: { type: string, format: date-time, nullable: true }
+        ubicacion: { $ref: "#/components/schemas/Ubicacion" }
+        precio: { $ref: "#/components/schemas/Monto" }
+
+    Reserva:
+      allOf:
+        - $ref: "#/components/schemas/ReservaInput"
+        - type: object
+          required: [id, viajeId, origen, estado]
+          properties:
+            id: { type: string, format: uuid }
+            viajeId: { type: string, format: uuid }
+            origen:
+              type: string
+              enum: [MANUAL, EMAIL, AGENCIA]
+            estado:
+              type: string
+              enum: [CONFIRMADA, MODIFICADA, CANCELADA]
+            actualizadoEn: { type: string, format: date-time }
+
+    RemitenteSeguro:
+      type: object
+      required: [id, remitente]
+      properties:
+        id: { type: string, format: uuid }
+        remitente: { type: string, example: "@booking.com" }
+
+    ConexionCorreo:
+      type: object
+      required: [conectado]
+      properties:
+        conectado: { type: boolean }
+        proveedor: { type: string, enum: [gmail, outlook] }
+        casilla: { type: string, format: email }
+        conectadoEn: { type: string, format: date-time }
+
+    CorreoEntrante:
+      type: object
+      required: [casilla, remitente, asunto, cuerpo, recibidoEn]
+      properties:
+        casilla:
+          type: string
+          format: email
+          description: Casilla del usuario de Trotamundos que recibió el correo
+        remitente: { type: string, format: email }
+        asunto: { type: string }
+        cuerpo: { type: string }
+        recibidoEn: { type: string, format: date-time }
+
+    Compartido:
+      type: object
+      required: [id, viajeId, enlaceId, designados, estado]
+      properties:
+        id: { type: string, format: uuid }
+        viajeId: { type: string, format: uuid }
+        enlaceId:
+          type: string
+          description: Identificador no adivinable usado en el enlace
+        designados:
+          type: array
+          items: { type: string, format: email }
+        estado: { type: string, enum: [ACTIVO, REVOCADO] }
+        publicacion:
+          type: object
+          nullable: true
+          properties:
+            redSocial: { type: string }
+            idExterno: { type: string }
+
+    CasoSoporte:
+      type: object
+      required: [id, reservaId, estado]
+      properties:
+        id: { type: string, format: uuid }
+        reservaId: { type: string, format: uuid }
+        estado:
+          type: string
+          enum: [PENDIENTE, DERIVADO]
+        ticketAgencia: { type: string, nullable: true }
+        creadoEn: { type: string, format: date-time }

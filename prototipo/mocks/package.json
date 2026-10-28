@@ -1,0 +1,13 @@
+{
+  "name": "trotamundos-mocks",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Sistemas externos simulados: proveedor de correo, agencias, red social y agencia de soporte",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "express": "4.21.2"
+  }
+}

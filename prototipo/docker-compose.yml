@@ -1,0 +1,109 @@
+# Prototipo Trotamundos — topología local que refleja la Vista de Despliegue (Iteración 3).
+# Solo se publican al host la entrada web (8080) y la consola de RabbitMQ (15672).
+
+x-backend-env: &backend-env
+  DATABASE_URL: postgres://trotamundos:trotamundos@postgres:5432/trotamundos
+  REDIS_URL: redis://redis:6379
+  RABBITMQ_URL: amqp://trotamundos:trotamundos@rabbitmq:5672
+
+services:
+  # --- Capa de Datos -------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: trotamundos
+      POSTGRES_PASSWORD: trotamundos
+      POSTGRES_DB: trotamundos
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trotamundos -d trotamundos"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  # Redis In-Memory Cache (ADR-007)
+  redis:
+    image: redis:7.4-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  # Event Bus / Message Broker (ADR-003)
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: trotamundos
+      RABBITMQ_DEFAULT_PASS: trotamundos
+    ports:
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # --- Capa de Aplicación --------------------------------------------------
+  # API Gateway + Lógica de Negocio (ADR-001)
+  backend:
+    build: ./backend
+    command: ["node", "dist/server.js"]
+    environment:
+      <<: *backend-env
+      PORT: "3000"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # Workers asincrónicos (ADR-003, ADR-006). Escalables con --scale worker=N
+  worker:
+    build: ./backend
+    command: ["node", "dist/workers/main.js"]
+    environment:
+      <<: *backend-env
+    depends_on:
+      rabbitmq: { condition: service_healthy }
+      postgres: { condition: service_healthy }
+    restart: unless-stopped
+
+  # --- Sistemas externos simulados -----------------------------------------
+  mocks:
+    build: ./mocks
+    environment:
+      PORT: "4000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # --- Capa de Presentación + entrada pública ------------------------------
+  # nginx: sirve el SPA (CDN) y reenvía /api al Gateway (ALB)
+  web:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      backend: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  pgdata:

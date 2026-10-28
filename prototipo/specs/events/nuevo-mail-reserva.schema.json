@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "trotamundos/events/NuevoMailReservaEvent",
+  "title": "NuevoMailReservaEvent",
+  "description": "Publicado por EmailIngestionListener en el Event Bus y consumido por ItinerarioEmailConsumer (ADR-003, Iteración 2). Fase 2.",
+  "type": "object",
+  "required": ["tipo", "correlationId", "publicadoEn", "correo"],
+  "properties": {
+    "tipo": { "const": "NuevoMailReservaEvent" },
+    "correlationId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Generado por el Listener; viaja en todos los logs para trazar el evento (Iteración 2, mitigación de trazabilidad)"
+    },
+    "publicadoEn": { "type": "string", "format": "date-time" },
+    "correo": {
+      "type": "object",
+      "required": ["casilla", "remitente", "asunto", "cuerpo", "recibidoEn"],
+      "properties": {
+        "casilla": { "type": "string", "format": "email" },
+        "remitente": { "type": "string", "format": "email" },
+        "asunto": { "type": "string" },
+        "cuerpo": { "type": "string" },
+        "recibidoEn": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}
