@@ -18,6 +18,7 @@ Se revisan las entradas disponibles al iniciar esta segunda iteración:
         *   `QA-01b, c` (Falta definir componentes concretos de red y optimizaciones de frontend).
         *   `QA-02` y `QA-07` (Estructura Multi-Tier lista; falta la topología de redundancia y auto-escalado).
     *   **No Tratados:**
+        *   `QA-03c y d` (Interoperabilidad).
         *   `QA-04a, b, c, d` (Seguridad y privacidad).
         *   `QA-06` (Usabilidad y Módulo Internacionalización).
 
