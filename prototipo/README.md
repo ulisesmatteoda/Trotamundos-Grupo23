@@ -39,15 +39,19 @@ Desde la carpeta `prototipo`:
 docker compose up --build
 ```
 
-La primera vez tarda varios minutos (descarga las imágenes y compila el backend y el frontend). Está listo cuando los logs dejan de avanzar y aparece `[api] escuchando en :3000` en los logs del backend. Se puede verificar desde otra terminal:
+La primera vez tarda varios minutos (descarga las imágenes y compila el backend y el frontend). Está listo cuando aparece este cartel en la consola:
 
-```bash
-docker compose ps
+```
+listo-1  | ================================================================
+listo-1  |   Trotamundos está listo
+listo-1  |
+listo-1  |   Aplicación web:   http://localhost:8080
+...
 ```
 
-Todos los servicios tienen que figurar como `running` / `healthy`.
+La terminal sigue mostrando los logs de los servicios después del cartel: es normal, el prototipo queda corriendo hasta que se lo detenga. Si el cartel se pierde de vista, se vuelve a ver desde otra terminal con `docker compose logs listo`.
 
-> Para dejarlo corriendo en segundo plano usar `docker compose up --build -d` y ver los logs con `docker compose logs -f`.
+> Para dejarlo corriendo en segundo plano: `docker compose up --build -d --wait`. El comando devuelve la terminal recién cuando todo está listo; los logs se ven con `docker compose logs -f`.
 
 ### 4. Entrar a la aplicación
 
@@ -73,7 +77,8 @@ Abrir http://localhost:8080 en el navegador e iniciar sesión con `ana@trotamund
 | `permission denied ... docker.sock` | En Linux, usar `sudo` o agregar el usuario al grupo `docker` (ver Requisitos) |
 | `port is already allocated` / `address already in use` | Otro programa usa el puerto 8080, 4000 o 15672: cerrarlo y volver a levantar |
 | `docker-compose: command not found` o errores de sintaxis del compose | Se está usando Compose v1; usar `docker compose` (v2) |
-| La página no carga o da 502 apenas se levanta | El backend todavía está iniciando: esperar unos segundos a que `docker compose ps` lo muestre `healthy` |
+| La página no carga o da 502 apenas se levanta | El backend todavía está iniciando: esperar a que aparezca el cartel "Trotamundos está listo" |
+| `container prototipo-postgres-replica-1 is unhealthy` / `no pg_hba.conf entry for replication` | Quedó una base de una versión anterior del prototipo: `docker compose down -v` y volver a levantar |
 | Errores raros después de actualizar el repo (`git pull`) | Reconstruir con la base limpia: `docker compose down -v && docker compose up --build` |
 
 ### Usuarios de demo
@@ -155,6 +160,7 @@ docker compose down -v
 | `redis` | Redis In-Memory Cache |
 | `rabbitmq` | Event Bus / Message Broker |
 | `mocks` | Sistemas externos simulados (correo, agencias, red social, agencia de soporte) |
+| `listo` | Solo para la demo: avisa por consola cuando todo está levantado y dónde entrar |
 
 ## Estado por fases
 

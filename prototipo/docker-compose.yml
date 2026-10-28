@@ -197,6 +197,35 @@ services:
       retries: 20
     restart: unless-stopped
 
+  # Avisa por consola cuando todo está levantado y dónde entrar. Después queda dormido
+  # (si terminara, `docker compose up --wait` lo tomaría como una falla).
+  listo:
+    image: trotamundos-backend
+    pull_policy: never
+    command:
+      - sh
+      - -c
+      - |
+        echo ''
+        echo '================================================================'
+        echo '  Trotamundos está listo'
+        echo ''
+        echo '  Aplicación web:   http://localhost:8080'
+        echo '  Usuario de demo:  ana@trotamundos.test / demo1234'
+        echo '  Simulador:        http://localhost:4000'
+        echo '  RabbitMQ:         http://localhost:15672 (trotamundos / trotamundos)'
+        echo ''
+        echo '  Para detenerlo:   Ctrl+C  (o docker compose down)'
+        echo '================================================================'
+        echo ''
+        exec sleep infinity
+    init: true
+    depends_on:
+      web: { condition: service_healthy }
+      mocks: { condition: service_healthy }
+      worker: { condition: service_started }
+      etl: { condition: service_started }
+
 volumes:
   pgdata:
   pgdata-replica:
