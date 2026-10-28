@@ -124,6 +124,7 @@ graph TD
 
 Esta vista modela la interacción en tiempo de ejecución entre el cliente, la infraestructura de borde (CDN), el API Gateway, la capa de caché distribuida en memoria (Redis) y los servicios del backend, garantizando tiempos de respuesta de baja latencia y reduciendo la carga de lectura sobre la base de datos operacional[cite: 2, 3].
 
+```
 ```mermaid
 graph TD
     %% ==========================================
