@@ -27,6 +27,8 @@ export interface ReservaInput {
   inicio: string;
   fin?: string | null;
   ubicacion?: Ubicacion;
+  // Lugar del fin cuando difiere del inicio: su zona se usa para mostrar el fin (QA-06d).
+  ubicacionFin?: Ubicacion;
   precio?: Monto;
 }
 

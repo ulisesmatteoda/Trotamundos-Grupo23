@@ -277,6 +277,28 @@ label {
   gap: 8px;
 }
 
+.selector-idioma {
+  width: auto;
+  padding: 6px 8px;
+}
+
+.login-encabezado {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+label.check {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+label.check input {
+  width: auto;
+}
+
 .reserva-cuerpo {
   display: flex;
   flex-direction: column;
@@ -391,6 +413,21 @@ legend {
 }
 
 @media (max-width: 560px) {
+  .barra {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  .barra .marca {
+    flex-basis: 50%;
+  }
+
+  .barra button,
+  .barra .selector-idioma {
+    padding: 6px 10px;
+    font-size: 0.9rem;
+  }
+
   .fila {
     flex-direction: column;
   }

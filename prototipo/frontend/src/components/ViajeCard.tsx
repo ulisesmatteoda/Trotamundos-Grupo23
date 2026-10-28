@@ -1,7 +1,7 @@
 // Un viaje con sus reservas agrupadas y ordenadas cronológicamente (UC-02).
+// Cada horario se muestra en la zona del lugar donde ocurre (QA-06d, ADR-008).
 import { Reserva, Viaje } from "../api/tipos";
-import { formatearDia, formatearFecha } from "../fechas";
-import { ESTADO_RESERVA, ORIGEN_RESERVA, TIPOS_RESERVA } from "../textos";
+import { useI18n } from "../i18n/I18nProvider";
 
 interface Props {
   viaje: Viaje;
@@ -12,14 +12,20 @@ interface Props {
   onEliminarReserva: (r: Reserva) => void;
 }
 
-function formatearPrecio(r: Reserva): string | null {
-  if (!r.precio) return null;
-  return new Intl.NumberFormat("es-AR", { style: "currency", currency: r.precio.moneda }).format(r.precio.valor);
-}
+const zonaInicio = (r: Reserva) => r.ubicacion?.zonaHoraria;
+const zonaFin = (r: Reserva) => r.ubicacionFin?.zonaHoraria ?? r.ubicacion?.zonaHoraria;
 
 export function ViajeCard({ viaje, onEditar, onEliminar, onAgregarReserva, onEditarReserva, onEliminarReserva }: Props) {
+  const { t, fechaHora, dia, moneda } = useI18n();
+
+  // El rango del viaje se muestra en la zona de la primera salida y de la última llegada.
+  const vigentes = viaje.reservas.filter((r) => r.estado !== "CANCELADA");
+  const primera = vigentes.find((r) => r.inicio === viaje.inicio);
+  const ultima = vigentes.find((r) => (r.fin ?? r.inicio) === viaje.fin);
   const rango =
-    viaje.inicio && viaje.fin ? `${formatearDia(viaje.inicio)} – ${formatearDia(viaje.fin)}` : "Sin reservas todavía";
+    viaje.inicio && viaje.fin
+      ? `${dia(viaje.inicio, primera && zonaInicio(primera))} – ${dia(viaje.fin, ultima && zonaFin(ultima))}`
+      : t("viaje.sinReservas");
 
   return (
     <article className="tarjeta viaje">
@@ -27,14 +33,14 @@ export function ViajeCard({ viaje, onEditar, onEliminar, onAgregarReserva, onEdi
         <div>
           <h2>{viaje.nombre}</h2>
           <p className="tenue">
-            {viaje.destino && <>{viaje.destino} · </>}
+            {viaje.destino && viaje.destino !== viaje.nombre && <>{viaje.destino} · </>}
             {rango}
           </p>
         </div>
         <div className="acciones-compactas">
-          <button onClick={onEditar}>Editar</button>
+          <button onClick={onEditar}>{t("comun.editar")}</button>
           <button className="peligro" onClick={onEliminar}>
-            Eliminar
+            {t("comun.eliminar")}
           </button>
         </div>
       </header>
@@ -42,35 +48,36 @@ export function ViajeCard({ viaje, onEditar, onEliminar, onAgregarReserva, onEdi
       {viaje.reservas.length > 0 && (
         <ol className="reservas">
           {viaje.reservas.map((r) => {
-            const zona = r.ubicacion?.zonaHoraria;
-            const precio = formatearPrecio(r);
+            const marcaEstado = r.estado !== "CONFIRMADA" ? t(`estado.${r.estado}`) : null;
+            const marcaOrigen = r.origen !== "MANUAL" ? t(`origen.${r.origen}`) : null;
             return (
               <li key={r.id} className={`reserva ${r.estado === "CANCELADA" ? "cancelada" : ""}`}>
-                <span className={`etiqueta tipo-${r.tipo.toLowerCase()}`}>{TIPOS_RESERVA[r.tipo] ?? r.tipo}</span>
+                <span className={`etiqueta tipo-${r.tipo.toLowerCase()}`}>{t(`tipo.${r.tipo}`, undefined, r.tipo)}</span>
                 <div className="reserva-cuerpo">
                   <strong className="reserva-titulo">{r.titulo}</strong>
-                  {(ESTADO_RESERVA[r.estado] || ORIGEN_RESERVA[r.origen]) && (
+                  {(marcaEstado || marcaOrigen) && (
                     <span className="chips">
-                      {ESTADO_RESERVA[r.estado] && (
-                        <span className={`chip estado-${r.estado.toLowerCase()}`}>{ESTADO_RESERVA[r.estado]}</span>
-                      )}
-                      {ORIGEN_RESERVA[r.origen] && <span className="chip">{ORIGEN_RESERVA[r.origen]}</span>}
+                      {marcaEstado && <span className={`chip estado-${r.estado.toLowerCase()}`}>{marcaEstado}</span>}
+                      {marcaOrigen && <span className="chip">{marcaOrigen}</span>}
                     </span>
                   )}
                   <span className="tenue">
-                    {formatearFecha(r.inicio, zona)}
-                    {r.fin && <> → {formatearFecha(r.fin, zona)}</>}
-                    {zona && <> ({zona})</>}
+                    {fechaHora(r.inicio, zonaInicio(r))}
+                    {r.fin && <> → {fechaHora(r.fin, zonaFin(r))}</>}
                   </span>
                   <span className="tenue">
-                    {[r.proveedor, r.codigoConfirmacion && `#${r.codigoConfirmacion}`, precio, r.ubicacion?.direccion]
+                    {[r.proveedor, r.codigoConfirmacion && `#${r.codigoConfirmacion}`, r.precio && moneda(r.precio), r.ubicacion?.direccion]
                       .filter(Boolean)
                       .join(" · ")}
                   </span>
                 </div>
                 <div className="acciones-compactas">
-                  <button onClick={() => onEditarReserva(r)}>Editar</button>
-                  <button className="peligro" onClick={() => onEliminarReserva(r)} aria-label={`Eliminar ${r.titulo}`}>
+                  <button onClick={() => onEditarReserva(r)}>{t("comun.editar")}</button>
+                  <button
+                    className="peligro"
+                    onClick={() => onEliminarReserva(r)}
+                    aria-label={t("viaje.eliminarReserva", { titulo: r.titulo })}
+                  >
                     ×
                   </button>
                 </div>
@@ -81,7 +88,7 @@ export function ViajeCard({ viaje, onEditar, onEliminar, onAgregarReserva, onEdi
       )}
 
       <button className="agregar" onClick={onAgregarReserva}>
-        + Agregar reserva
+        {t("viaje.agregarReserva")}
       </button>
     </article>
   );

@@ -1,10 +1,13 @@
 // Alta guiada de una reserva (QA-06b): pasos numerados, solo 3 campos obligatorios,
 // valores por defecto razonables y validación en línea antes de enviar.
+// Las horas se cargan en la hora local del lugar; si la reserva termina en otro lugar
+// (vuelo, tren, bus), el fin se carga en la zona del destino (QA-06d, ADR-008).
 import { FormEvent, useMemo, useState } from "react";
 import { ErrorApi } from "../api/cliente";
 import { Reserva, ReservaInput } from "../api/tipos";
-import { esZonaValida, localAUtc, utcALocal, zonaDelNavegador, zonasHorarias } from "../fechas";
-import { mensajeCampo, mensajeError, TIPOS_RESERVA } from "../textos";
+import { esZonaValida, localAUtc, utcALocal, zonaDelNavegador, zonasHorarias } from "../i18n/DateTimeFormatter";
+import { useI18n } from "../i18n/I18nProvider";
+import { useMensajes } from "../i18n/errores";
 
 interface Props {
   inicial?: Reserva;
@@ -12,15 +15,23 @@ interface Props {
   onCancelar: () => void;
 }
 
+const TIPOS = ["VUELO", "HOTEL", "AUTO", "TREN", "BUS"];
+const TIPOS_CON_TRAYECTO = ["VUELO", "TREN", "BUS"];
 const MONEDAS = ["ARS", "USD", "EUR", "BRL", "CLP", "UYU", "GBP"];
 
 export function ReservaForm({ inicial, onGuardar, onCancelar }: Props) {
+  const { t } = useI18n();
+  const { mensajeDe, mensajeCampo } = useMensajes();
+
   const zonaInicial = inicial?.ubicacion?.zonaHoraria ?? zonaDelNavegador();
+  const zonaFinInicial = inicial?.ubicacionFin?.zonaHoraria ?? zonaInicial;
   const [tipo, setTipo] = useState(inicial?.tipo ?? "VUELO");
   const [titulo, setTitulo] = useState(inicial?.titulo ?? "");
   const [zona, setZona] = useState(zonaInicial);
+  const [otroLugar, setOtroLugar] = useState(Boolean(inicial?.ubicacionFin));
+  const [zonaFin, setZonaFin] = useState(zonaFinInicial);
   const [inicio, setInicio] = useState(inicial ? utcALocal(inicial.inicio, zonaInicial) : "");
-  const [fin, setFin] = useState(inicial?.fin ? utcALocal(inicial.fin, zonaInicial) : "");
+  const [fin, setFin] = useState(inicial?.fin ? utcALocal(inicial.fin, zonaFinInicial) : "");
   const [direccion, setDireccion] = useState(inicial?.ubicacion?.direccion ?? "");
   const [proveedor, setProveedor] = useState(inicial?.proveedor ?? "");
   const [codigo, setCodigo] = useState(inicial?.codigoConfirmacion ?? "");
@@ -32,13 +43,18 @@ export function ReservaForm({ inicial, onGuardar, onCancelar }: Props) {
   const [enviando, setEnviando] = useState(false);
   const zonas = useMemo(zonasHorarias, []);
 
-  // Validación local, con los mismos códigos que devuelve el backend.
-  const zonaValida = esZonaValida(zona);
+  const conTrayecto = TIPOS_CON_TRAYECTO.includes(tipo) && otroLugar;
+  const zonaDelFin = conTrayecto ? zonaFin : zona;
+
+  // Validación local, con los mismos códigos que devuelve el backend. Las horas se comparan
+  // como instantes porque inicio y fin pueden estar en zonas distintas.
   const errores: Record<string, string> = { ...erroresServidor };
-  if (!zonaValida) errores["ubicacion.zonaHoraria"] = "ZONA_HORARIA_INVALIDA";
-  if (fin && inicio && fin < inicio) errores.fin = "ANTERIOR_AL_INICIO";
+  if (!esZonaValida(zona)) errores["ubicacion.zonaHoraria"] = "ZONA_HORARIA_INVALIDA";
+  if (conTrayecto && !esZonaValida(zonaFin)) errores["ubicacionFin.zonaHoraria"] = "ZONA_HORARIA_INVALIDA";
+  const zonasOk = !errores["ubicacion.zonaHoraria"] && !errores["ubicacionFin.zonaHoraria"];
+  if (fin && inicio && zonasOk && localAUtc(fin, zonaDelFin) < localAUtc(inicio, zona)) errores.fin = "ANTERIOR_AL_INICIO";
   if (precio && (Number.isNaN(Number(precio)) || Number(precio) < 0)) errores["precio.valor"] = "NUMERO_INVALIDO";
-  const completo = titulo.trim() && inicio && zonaValida && !errores.fin && !errores["precio.valor"];
+  const completo = titulo.trim() && inicio && zonasOk && !errores.fin && !errores["precio.valor"];
 
   const limpiarServidor = (campo: string) => {
     if (erroresServidor[campo]) setErroresServidor(({ [campo]: _, ...resto }) => resto);
@@ -56,13 +72,14 @@ export function ReservaForm({ inicial, onGuardar, onCancelar }: Props) {
         proveedor: proveedor.trim() || undefined,
         codigoConfirmacion: codigo.trim() || undefined,
         inicio: localAUtc(inicio, zona),
-        fin: fin ? localAUtc(fin, zona) : null,
+        fin: fin ? localAUtc(fin, zonaDelFin) : null,
         ubicacion: { zonaHoraria: zona, direccion: direccion.trim() || undefined },
+        ubicacionFin: conTrayecto ? { zonaHoraria: zonaFin } : undefined,
         precio: precio ? { valor: Number(precio), moneda } : undefined,
       });
     } catch (err) {
       setErroresServidor(err instanceof ErrorApi ? err.detalle ?? {} : {});
-      setError(mensajeError(err instanceof ErrorApi ? err.codigo : "ERROR_INTERNO"));
+      setError(mensajeDe(err));
       setEnviando(false);
     }
   }
@@ -72,10 +89,16 @@ export function ReservaForm({ inicial, onGuardar, onCancelar }: Props) {
 
   return (
     <form className="formulario" onSubmit={enviar}>
+      <datalist id="zonas">
+        {zonas.map((z) => (
+          <option key={z} value={z} />
+        ))}
+      </datalist>
+
       <fieldset>
-        <legend>1. ¿Qué reservaste?</legend>
-        <div className="tipos" role="radiogroup" aria-label="Tipo de reserva">
-          {Object.entries(TIPOS_RESERVA).map(([valor, etiqueta]) => (
+        <legend>{t("reservaForm.paso1")}</legend>
+        <div className="tipos" role="radiogroup" aria-label={t("reservaForm.tipos")}>
+          {TIPOS.map((valor) => (
             <button
               type="button"
               key={valor}
@@ -84,19 +107,19 @@ export function ReservaForm({ inicial, onGuardar, onCancelar }: Props) {
               className={tipo === valor ? "tipo activo" : "tipo"}
               onClick={() => setTipo(valor)}
             >
-              {etiqueta}
+              {t(`tipo.${valor}`)}
             </button>
           ))}
         </div>
         <label>
-          Título *
+          {t("reservaForm.titulo")}
           <input
             value={titulo}
             onChange={(e) => {
               setTitulo(e.target.value);
               limpiarServidor("titulo");
             }}
-            placeholder={tipo === "HOTEL" ? "Ej. Hotel Central" : "Ej. Buenos Aires → Madrid"}
+            placeholder={tipo === "HOTEL" ? t("reservaForm.tituloPlaceholderHotel") : t("reservaForm.tituloPlaceholder")}
             maxLength={160}
             required
             autoFocus
@@ -106,21 +129,30 @@ export function ReservaForm({ inicial, onGuardar, onCancelar }: Props) {
       </fieldset>
 
       <fieldset>
-        <legend>2. ¿Cuándo y dónde?</legend>
+        <legend>{t("reservaForm.paso2")}</legend>
         <label>
-          Zona horaria del lugar *
+          {conTrayecto ? t("reservaForm.zonaSalida") : t("reservaForm.zona")}
           <input list="zonas" value={zona} onChange={(e) => setZona(e.target.value)} required />
-          <datalist id="zonas">
-            {zonas.map((z) => (
-              <option key={z} value={z} />
-            ))}
-          </datalist>
-          <span className="pista">Las horas se cargan en la hora local de este lugar.</span>
+          <span className="pista">{t("reservaForm.zonaPista")}</span>
           {errorDe("ubicacion.zonaHoraria")}
         </label>
+        {TIPOS_CON_TRAYECTO.includes(tipo) && (
+          <label className="check">
+            <input type="checkbox" checked={otroLugar} onChange={(e) => setOtroLugar(e.target.checked)} />
+            {t("reservaForm.otroLugar")}
+          </label>
+        )}
+        {conTrayecto && (
+          <label>
+            {t("reservaForm.zonaLlegada")}
+            <input list="zonas" value={zonaFin} onChange={(e) => setZonaFin(e.target.value)} required />
+            <span className="pista">{t("reservaForm.zonaLlegadaPista")}</span>
+            {errorDe("ubicacionFin.zonaHoraria")}
+          </label>
+        )}
         <div className="fila">
           <label>
-            Inicio *
+            {t("reservaForm.inicio")}
             <input
               type="datetime-local"
               value={inicio}
@@ -133,37 +165,37 @@ export function ReservaForm({ inicial, onGuardar, onCancelar }: Props) {
             {errorDe("inicio")}
           </label>
           <label>
-            Fin
-            <input type="datetime-local" value={fin} min={inicio || undefined} onChange={(e) => setFin(e.target.value)} />
+            {t("reservaForm.fin")}
+            <input type="datetime-local" value={fin} onChange={(e) => setFin(e.target.value)} />
             {errorDe("fin")}
           </label>
         </div>
         <label>
-          Dirección
-          <input value={direccion} onChange={(e) => setDireccion(e.target.value)} placeholder="Opcional" />
+          {t("reservaForm.direccion")}
+          <input value={direccion} onChange={(e) => setDireccion(e.target.value)} placeholder={t("comun.opcional")} />
         </label>
       </fieldset>
 
       <fieldset>
-        <legend>3. Detalles (opcional)</legend>
+        <legend>{t("reservaForm.paso3")}</legend>
         <div className="fila">
           <label>
-            Proveedor
-            <input value={proveedor} onChange={(e) => setProveedor(e.target.value)} placeholder="Ej. Iberia" />
+            {t("reservaForm.proveedor")}
+            <input value={proveedor} onChange={(e) => setProveedor(e.target.value)} placeholder={t("reservaForm.proveedorPlaceholder")} />
           </label>
           <label>
-            Código de confirmación
+            {t("reservaForm.codigo")}
             <input value={codigo} onChange={(e) => setCodigo(e.target.value)} />
           </label>
         </div>
         <div className="fila">
           <label>
-            Precio
+            {t("reservaForm.precio")}
             <input type="number" min="0" step="0.01" value={precio} onChange={(e) => setPrecio(e.target.value)} />
             {errorDe("precio.valor")}
           </label>
           <label>
-            Moneda
+            {t("reservaForm.moneda")}
             <select value={moneda} onChange={(e) => setMoneda(e.target.value)}>
               {MONEDAS.map((m) => (
                 <option key={m}>{m}</option>
@@ -176,10 +208,10 @@ export function ReservaForm({ inicial, onGuardar, onCancelar }: Props) {
       {error && <p className="error" role="alert">{error}</p>}
       <div className="acciones">
         <button type="button" onClick={onCancelar}>
-          Cancelar
+          {t("comun.cancelar")}
         </button>
         <button className="primario" disabled={enviando || !completo}>
-          {inicial ? "Guardar cambios" : "Agregar reserva"}
+          {inicial ? t("reservaForm.guardar") : t("reservaForm.agregar")}
         </button>
       </div>
     </form>

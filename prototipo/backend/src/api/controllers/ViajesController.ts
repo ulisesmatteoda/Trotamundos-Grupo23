@@ -6,9 +6,13 @@ import { reservaDto, viajeDto } from "../dto";
 import { validarReserva, validarViaje } from "../validacion";
 import { usuarioDe } from "../../gateway/autenticacion";
 
+// X-Cache y Server-Timing permiten ver el efecto del Cache-Aside (ADR-007) desde el navegador.
 export async function listarViajes(req: Request, res: Response): Promise<void> {
+  const inicio = performance.now();
   const archivados = req.query.archivados === "true";
-  const viajes = await ViajeService.listar(usuarioDe(res), archivados);
+  const { viajes, cache } = await ViajeService.listar(usuarioDe(res), archivados);
+  res.set("X-Cache", cache);
+  res.set("Server-Timing", `app;desc="${cache}";dur=${(performance.now() - inicio).toFixed(1)}`);
   res.json(viajes.map(viajeDto));
 }
 

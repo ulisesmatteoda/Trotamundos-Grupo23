@@ -59,6 +59,13 @@ const MIGRACIONES: { version: number; sql: string }[] = [
       CREATE INDEX reserva_identidad_externa ON reserva (lower(proveedor), lower(codigo_confirmacion));
     `,
   },
+  {
+    version: 3,
+    sql: `
+      -- Lugar (y zona horaria) del fin de la reserva cuando difiere del inicio (QA-06d, ADR-008).
+      ALTER TABLE reserva ADD COLUMN ubicacion_fin jsonb;
+    `,
+  },
 ];
 
 const LOCK_MIGRACIONES = 724_001;

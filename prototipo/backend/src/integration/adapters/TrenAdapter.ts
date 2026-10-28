@@ -35,6 +35,7 @@ function traducir(b: RailBooking): ReservaExterna {
       inicio: new Date(j.departure_utc),
       fin: new Date(j.arrival_utc),
       ubicacion: { direccion: j.from, zonaHoraria: j.tz },
+      ubicacionFin: { direccion: j.to, zonaHoraria: j.tz },
       precio: b.fare ? { valor: b.fare.value, moneda: b.fare.ccy } : undefined,
     },
   };

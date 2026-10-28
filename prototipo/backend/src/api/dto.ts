@@ -15,6 +15,7 @@ export function reservaDto(r: Reserva) {
     inicio: iso(r.inicio),
     fin: iso(r.fin),
     ubicacion: r.ubicacion,
+    ubicacionFin: r.ubicacionFin,
     precio: r.precio,
     origen: r.origen,
     estado: r.estado,

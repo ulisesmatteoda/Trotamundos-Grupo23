@@ -15,6 +15,9 @@ export const config = {
   jwtExpiracion: process.env.JWT_EXPIRACION ?? "8h",
   seedDemo: process.env.SEED_DEMO === "true",
   archivadoIntervaloMs: Number(process.env.ARCHIVADO_INTERVALO_MS ?? 60_000),
+  // TTL del Cache-Aside de itinerarios (ADR-007). Acota cuánto puede durar un dato viejo
+  // si se perdiera una invalidación; coincide con la ventana de QA-01a (5 minutos).
+  cacheTtlSegundos: Number(process.env.CACHE_TTL_SEGUNDOS ?? 300),
   // Secreto compartido con los sistemas externos que llaman a nuestros webhooks.
   webhookSecret: requerida("WEBHOOK_SECRET"),
   // Base de las APIs de agencias (en el prototipo, el servicio de mocks).

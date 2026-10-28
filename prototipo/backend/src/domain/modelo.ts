@@ -29,7 +29,10 @@ export interface DatosReserva {
   codigoConfirmacion?: string;
   inicio: Date;
   fin?: Date | null;
+  // Lugar donde ocurre el inicio (ej. aeropuerto de salida).
   ubicacion?: Ubicacion;
+  // Lugar del fin, si es otro (vuelos, trenes, autobuses). Su zona se usa para mostrar el fin (QA-06d, ADR-008).
+  ubicacionFin?: Ubicacion;
   precio?: Monto;
 }
 

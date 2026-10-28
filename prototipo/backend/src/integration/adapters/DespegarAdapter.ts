@@ -49,6 +49,7 @@ function traducir(r: DespegarReserva): ReservaExterna {
       inicio: horaDespegar(v.salida, v.origen.zonaHoraria),
       fin: horaDespegar(v.llegada, v.destino.zonaHoraria),
       ubicacion: { direccion: `Aeropuerto ${v.origen.iata}, ${v.origen.ciudad}`, zonaHoraria: v.origen.zonaHoraria },
+      ubicacionFin: { direccion: `Aeropuerto ${v.destino.iata}, ${v.destino.ciudad}`, zonaHoraria: v.destino.zonaHoraria },
       precio: r.tarifa ? { valor: Number(r.tarifa.total.replace(/\./g, "").replace(",", ".")), moneda: r.tarifa.moneda } : undefined,
     },
   };

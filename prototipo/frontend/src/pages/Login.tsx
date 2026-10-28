@@ -1,10 +1,13 @@
 import { FormEvent, useState } from "react";
-import { ErrorApi } from "../api/cliente";
+import { useI18n } from "../i18n/I18nProvider";
+import { useMensajes } from "../i18n/errores";
+import { SelectorIdioma } from "../i18n/SelectorIdioma";
 import { useSesion } from "../sesion";
-import { mensajeError } from "../textos";
 
 export function Login() {
   const { ingresar } = useSesion();
+  const { t } = useI18n();
+  const { mensajeDe } = useMensajes();
   const [email, setEmail] = useState("ana@trotamundos.test");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -17,7 +20,7 @@ export function Login() {
     try {
       await ingresar(email, password);
     } catch (err) {
-      setError(mensajeError(err instanceof ErrorApi ? err.codigo : "ERROR_INTERNO"));
+      setError(mensajeDe(err));
       setEnviando(false);
     }
   }
@@ -25,15 +28,18 @@ export function Login() {
   return (
     <main className="login">
       <form className="tarjeta login-form" onSubmit={enviar}>
-        <h1>Trotamundos</h1>
-        <p className="tenue">Todos tus viajes, en un solo lugar.</p>
+        <div className="login-encabezado">
+          <h1>Trotamundos</h1>
+          <SelectorIdioma />
+        </div>
+        <p className="tenue">{t("app.lema")}</p>
 
         <label>
-          Email
+          {t("login.email")}
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="username" />
         </label>
         <label>
-          Contraseña
+          {t("login.password")}
           <input
             type="password"
             value={password}
@@ -45,9 +51,9 @@ export function Login() {
 
         {error && <p className="error" role="alert">{error}</p>}
         <button className="primario" disabled={enviando}>
-          {enviando ? "Ingresando…" : "Ingresar"}
+          {enviando ? t("login.ingresando") : t("login.ingresar")}
         </button>
-        <p className="tenue pista">Demo: ana@trotamundos.test o bruno@trotamundos.test, contraseña demo1234</p>
+        <p className="tenue pista">{t("login.pista")}</p>
       </form>
     </main>
   );

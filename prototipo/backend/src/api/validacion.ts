@@ -39,17 +39,17 @@ export function zonaHorariaValida(zona: string): boolean {
   }
 }
 
-function ubicacion(v: any, errores: Errores): Ubicacion | undefined {
+function ubicacion(v: any, errores: Errores, campo = "ubicacion"): Ubicacion | undefined {
   if (vacio(v)) return undefined;
   if (typeof v !== "object" || !esTexto(v.zonaHoraria) || !zonaHorariaValida(v.zonaHoraria)) {
-    errores["ubicacion.zonaHoraria"] = "ZONA_HORARIA_INVALIDA";
+    errores[`${campo}.zonaHoraria`] = "ZONA_HORARIA_INVALIDA";
     return undefined;
   }
   const u: Ubicacion = { zonaHoraria: v.zonaHoraria };
   if (esTexto(v.direccion) && v.direccion.trim()) u.direccion = v.direccion.trim();
   for (const eje of ["lat", "lng"] as const) {
     if (vacio(v[eje])) continue;
-    if (typeof v[eje] !== "number") errores[`ubicacion.${eje}`] = "NUMERO_INVALIDO";
+    if (typeof v[eje] !== "number") errores[`${campo}.${eje}`] = "NUMERO_INVALIDO";
     else u[eje] = v[eje];
   }
   return u;
@@ -81,8 +81,9 @@ export function validarReserva(body: any): DatosReserva {
   const fin = fecha(body, "fin", errores, false);
   if (inicio && fin && !errores.inicio && !errores.fin && fin < inicio) errores.fin = "ANTERIOR_AL_INICIO";
   const u = ubicacion(body?.ubicacion, errores);
+  const uFin = ubicacion(body?.ubicacionFin, errores, "ubicacionFin");
   const p = precio(body?.precio, errores);
 
   if (Object.keys(errores).length) throw invalido(errores);
-  return { tipo: tipo!, titulo: titulo!, proveedor, codigoConfirmacion, inicio: inicio!, fin: fin ?? null, ubicacion: u, precio: p };
+  return { tipo: tipo!, titulo: titulo!, proveedor, codigoConfirmacion, inicio: inicio!, fin: fin ?? null, ubicacion: u, ubicacionFin: uFin, precio: p };
 }

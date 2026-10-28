@@ -1,5 +1,6 @@
-// Conversión entre instantes UTC (lo que viaja por la API, ADR-008) y la hora local del lugar
-// de cada reserva (QA-06d). En la Fase 3 esto pasa a formar parte del DateTimeFormatter.
+// DateTime & Timezone Formatter (Iteración 4, Vista de Módulos; ADR-008).
+// El backend envía instantes UTC; acá se convierten a la zona horaria del LUGAR de cada
+// reserva (QA-06d) y se formatean según el locale del usuario.
 
 function partesEnZona(instante: Date, zona: string) {
   const partes = new Intl.DateTimeFormat("en-US", {
@@ -23,7 +24,7 @@ function offsetMs(instante: Date, zona: string): number {
 
 const dos = (n: number) => String(n).padStart(2, "0");
 
-// "2026-12-10T09:00" en la zona `zona` → ISO UTC
+// "2026-12-10T09:00" (hora local de `zona`) → ISO UTC
 export function localAUtc(valorInput: string, zona: string): string {
   const [fecha, hora] = valorInput.split("T");
   const [y, m, d] = fecha.split("-").map(Number);
@@ -35,22 +36,30 @@ export function localAUtc(valorInput: string, zona: string): string {
   return new Date(instante).toISOString();
 }
 
-// ISO UTC → "2026-12-10T09:00" en la zona `zona`, para un <input type="datetime-local">
+// ISO UTC → "2026-12-10T09:00" en `zona`, para un <input type="datetime-local">
 export function utcALocal(iso: string, zona: string): string {
   const p = partesEnZona(new Date(iso), zona);
   return `${p.y}-${dos(p.m)}-${dos(p.d)}T${dos(p.h)}:${dos(p.min)}`;
 }
 
-export function formatearFecha(iso: string, zona?: string): string {
-  return new Intl.DateTimeFormat("es-AR", {
+// Fecha y hora en la zona del lugar, con la abreviatura de esa zona (ej. "18 nov 2026, 14:00 GMT+1").
+export function formatearFechaHora(iso: string, locale: string, zona?: string): string {
+  return new Intl.DateTimeFormat(locale, {
     timeZone: zona,
     dateStyle: "medium",
     timeStyle: "short",
-  }).format(new Date(iso));
+  }).format(new Date(iso)) + (zona ? ` ${abreviaturaZona(iso, locale, zona)}` : "");
 }
 
-export function formatearDia(iso: string): string {
-  return new Intl.DateTimeFormat("es-AR", { dateStyle: "medium" }).format(new Date(iso));
+export function formatearDia(iso: string, locale: string, zona?: string): string {
+  return new Intl.DateTimeFormat(locale, { timeZone: zona, dateStyle: "medium" }).format(new Date(iso));
+}
+
+function abreviaturaZona(iso: string, locale: string, zona: string): string {
+  const parte = new Intl.DateTimeFormat(locale, { timeZone: zona, timeZoneName: "short" })
+    .formatToParts(new Date(iso))
+    .find((p) => p.type === "timeZoneName");
+  return parte?.value ?? zona;
 }
 
 export const zonaDelNavegador = () => Intl.DateTimeFormat().resolvedOptions().timeZone;

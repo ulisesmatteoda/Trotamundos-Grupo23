@@ -36,7 +36,7 @@ prototipo. Se actualiza al cerrar cada fase.
 | DTOs planos hacia la presentación | Iteración 2 (Paso 5.1) | [`backend/src/api/dto.ts`](./backend/src/api/dto.ts) | — |
 | Migraciones con advisory lock (varias réplicas) | ADR-006 | [`backend/src/persistence/migraciones.ts`](./backend/src/persistence/migraciones.ts) | Log `[db] migración 1 aplicada` |
 | Alta guiada de reservas | QA-06b | [`frontend/src/components/ReservaForm.tsx`](./frontend/src/components/ReservaForm.tsx) | 3 pasos, 3 campos obligatorios, validación en línea |
-| Horas en la zona del lugar de la reserva | QA-06d | [`frontend/src/fechas.ts`](./frontend/src/fechas.ts) | Una reserva en `Europe/Madrid` se carga y muestra en hora de Madrid |
+| Horas en la zona del lugar de la reserva | QA-06d | [`frontend/src/i18n/DateTimeFormatter.ts`](./frontend/src/i18n/DateTimeFormatter.ts) (desde la Fase 3) | Una reserva en `Europe/Madrid` se carga y muestra en hora de Madrid |
 | Panel agrupado por viaje, activos / archivados | UC-02, CON-01 | [`frontend/src/pages/Panel.tsx`](./frontend/src/pages/Panel.tsx), [`ViajeCard.tsx`](./frontend/src/components/ViajeCard.tsx) | http://localhost:8080 (también en ancho de móvil) |
 
 ### Fase 2 — UC-01 Ingesta asincrónica de correos e integración con proveedores
@@ -63,11 +63,28 @@ prototipo. Se actualiza al cerrar cada fase.
 | Actualizaciones visibles sin recargar | QA-01a | Refresco cada 10 s en [`Panel.tsx`](./frontend/src/pages/Panel.tsx) | Un correo enviado con el panel abierto aparece en ≤ 10 s |
 | Sistemas externos simulados | Diagrama de Contexto (Iteración 1) | [`mocks/src/`](./mocks/src) | Simulador en http://localhost:4000 |
 
+### Fase 3 — Caché de dos niveles e internacionalización (Iteración 4)
+
+| Elemento arquitectónico | Origen | Código | Cómo se verifica |
+|---|---|---|---|
+| `ViajeService` cache-aware (Cache-Aside sobre Redis, con TTL) | ADR-007, Iteración 4 (Paso 5.4) | `ViajeService.listar` en [`domain/ViajeService.ts`](./backend/src/domain/ViajeService.ts), [`cache/CacheItinerarios.ts`](./backend/src/cache/CacheItinerarios.ts) | Header `X-Cache: MISS` y luego `HIT`; `Server-Timing` muestra la duración en el servidor |
+| Invalidación explícita ante cualquier modificación | ADR-007 | Cada escritura de `ViajeService` (manual, correo, agencia, archivado) llama a `CacheItinerarios.invalidar` | Después de editar un viaje, o de que el worker procese un correo, la lectura siguiente es `MISS` con el dato nuevo |
+| La caché nunca rompe una lectura | QA-02 | [`cache/redisClient.ts`](./backend/src/cache/redisClient.ts) (sin cola offline, timeout de 300 ms), fallas tratadas como miss | `docker compose stop redis`: la app sigue leyendo y escribiendo desde PostgreSQL |
+| Descarte de la caché tras un corte de Redis | ADR-007 (consistencia) | Evento `ready` en `CacheItinerarios.ts` | Log `[cache] Redis reconectado: itinerarios cacheados descartados` |
+| Respuesta del backend neutra (UTC + zona IANA) y cacheable para cualquier idioma | ADR-008 | [`api/dto.ts`](./backend/src/api/dto.ts) | La misma entrada de caché sirve a Ana (es) y a un usuario en inglés |
+| Zona horaria del destino (`ubicacionFin`) | QA-06d, ADR-008 | Migración 3, [`domain/modelo.ts`](./backend/src/domain/modelo.ts), `DespegarAdapter`, `TrenAdapter`, parser de correo | Vuelo EZE → MAD: salida en hora de Buenos Aires, llegada en hora de Madrid |
+| CDN: estáticos cacheables, API nunca cacheada | ADR-007 | [`frontend/nginx.conf`](./frontend/nginx.conf) | `/assets/*` → `max-age=31536000, immutable`; `/locales/*` → `max-age=3600`; `/api/*` → `no-store`; gzip |
+| `I18nProvider` (contexto de idioma) | ADR-008, Iteración 4 (Vista de Módulos) | [`frontend/src/i18n/I18nProvider.tsx`](./frontend/src/i18n/I18nProvider.tsx) | Selector de idioma; ningún componente tiene textos fijos |
+| `TranslatorService` con carga bajo demanda | ADR-008 | [`frontend/src/i18n/TranslatorService.ts`](./frontend/src/i18n/TranslatorService.ts) | En la pestaña Red del navegador solo se descarga el `.json` del idioma en uso |
+| Paquetes `es.json`, `en.json`, `pt.json` | Iteración 4 (Vista de Módulos) | [`frontend/public/locales/`](./frontend/public/locales) | Agregar un idioma = agregar un JSON, sin tocar el backend |
+| `DateTimeFormatter` (zona del lugar de cada reserva) | QA-06d, ADR-008 | [`frontend/src/i18n/DateTimeFormatter.ts`](./frontend/src/i18n/DateTimeFormatter.ts) | Cada horario muestra la abreviatura de su zona (ART, GMT+1, GMT-5…) |
+| `CurrencyFormatter` | ADR-008 | [`frontend/src/i18n/CurrencyFormatter.ts`](./frontend/src/i18n/CurrencyFormatter.ts) | `EUR 480,00` en es-AR, `€480.00` en en-US |
+| Idioma preferido de la cuenta | QA-06d, CON-04 | [`frontend/src/App.tsx`](./frontend/src/App.tsx) | Bruno (cuenta `en-US`) ve la app en inglés aunque su navegador esté en español |
+
 ## Pendiente por fase
 
 | Fase | Elementos |
 |---|---|
-| 3 | Cache-Aside en `ViajeService`, `I18nProvider`, `DateTimeFormatter`, `CurrencyFormatter`, `es.json`/`en.json` |
 | 4 | Envelope encryption, revocación de correo, `CompartirService`, `Compartido`, log de accesos denegados |
 | 5 | `IRedSocialAdapter`, `FacebookAdapter`, `XAdapter`, `SoporteService`, `IAgenciaSoporteAdapter`, `DespegarSoporteAdapter`, `SoporteRetryConsumer`, "Cómo llegar" |
 | 6 | Read Replica, ETL Pipeline Worker, Data Warehouse, réplicas del backend |

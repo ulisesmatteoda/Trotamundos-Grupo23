@@ -2,9 +2,12 @@
 // Orquesta la gestión de viajes y reservas (UC-02), su ciclo de vida y la incorporación de
 // reservas externas (UC-01). Delega en los proveedores solo a través de IAgenciaAdapter:
 // no conoce ni importa ningún adaptador concreto (ADR-002, QA-05a).
+// Es "cache-aware" (Iteración 4, Paso 5.4): lee los itinerarios primero de Redis y, ante
+// cualquier modificación, invalida la entrada del usuario (Cache-Aside, ADR-007).
 import { ViajeRepository } from "../persistence/ViajeRepository";
 import { UsuarioRepository } from "../persistence/UsuarioRepository";
 import { RemitenteRepository } from "../persistence/RemitenteRepository";
+import { CacheItinerarios } from "../cache/CacheItinerarios";
 import type { IAgenciaAdapter } from "../integration/IAgenciaAdapter";
 import {
   DatosReserva,
@@ -68,9 +71,15 @@ export interface Incorporacion {
   viajeId?: string;
 }
 
-// Incorpora una reserva externa al itinerario: si ya existe (mismo proveedor y código)
+async function incorporarReservaExterna(usuarioId: string, externa: ReservaExterna, origen: OrigenReserva): Promise<Incorporacion> {
+  const r = await aplicarReservaExterna(usuarioId, externa, origen);
+  if (r.resultado !== "SIN_CAMBIOS") await CacheItinerarios.invalidar(usuarioId);
+  return r;
+}
+
+// Aplica una reserva externa al itinerario: si ya existe (mismo proveedor y código)
 // la actualiza o cancela; si no, la agrupa en el viaje activo que la contiene o crea uno nuevo.
-async function incorporarReservaExterna(
+async function aplicarReservaExterna(
   usuarioId: string,
   externa: ReservaExterna,
   origen: OrigenReserva,
@@ -121,24 +130,32 @@ export const ViajeService = {
     return [...agencias.keys()];
   },
 
-  listar(usuarioId: string, archivados: boolean): Promise<Viaje[]> {
-    return ViajeRepository.listar(usuarioId, archivados ? "ARCHIVADO" : "ACTIVO");
+  // Cache-Aside: Redis primero; ante un miss, PostgreSQL y se puebla la caché con TTL.
+  async listar(usuarioId: string, archivados: boolean): Promise<{ viajes: Viaje[]; cache: "HIT" | "MISS" }> {
+    const enCache = await CacheItinerarios.leer(usuarioId, archivados);
+    if (enCache) return { viajes: enCache, cache: "HIT" };
+    const viajes = await ViajeRepository.listar(usuarioId, archivados ? "ARCHIVADO" : "ACTIVO");
+    await CacheItinerarios.guardar(usuarioId, archivados, viajes);
+    return { viajes, cache: "MISS" };
   },
 
   obtener: viajeDelUsuario,
 
   async crear(usuarioId: string, datos: DatosViaje): Promise<Viaje> {
     const id = await ViajeRepository.crear(usuarioId, datos);
+    await CacheItinerarios.invalidar(usuarioId);
     return viajeDelUsuario(usuarioId, id);
   },
 
   async actualizar(usuarioId: string, viajeId: string, datos: DatosViaje): Promise<Viaje> {
     if (!(await ViajeRepository.actualizar(usuarioId, viajeId, datos))) throw noEncontrado("VIAJE_NO_ENCONTRADO");
+    await CacheItinerarios.invalidar(usuarioId);
     return viajeDelUsuario(usuarioId, viajeId);
   },
 
   async eliminar(usuarioId: string, viajeId: string): Promise<void> {
     if (!(await ViajeRepository.eliminar(usuarioId, viajeId))) throw noEncontrado("VIAJE_NO_ENCONTRADO");
+    await CacheItinerarios.invalidar(usuarioId);
   },
 
   async agregarReserva(
@@ -150,6 +167,7 @@ export const ViajeService = {
     await viajeDelUsuario(usuarioId, viajeId);
     const reserva = await ViajeRepository.crearReserva(viajeId, datos, origen);
     await reactivarSiCorresponde(usuarioId, viajeId);
+    await CacheItinerarios.invalidar(usuarioId);
     return reserva;
   },
 
@@ -157,12 +175,14 @@ export const ViajeService = {
     const viaje = await viajeDeLaReserva(usuarioId, reservaId);
     const reserva = await ViajeRepository.actualizarReserva(reservaId, datos);
     await reactivarSiCorresponde(usuarioId, viaje.id);
+    await CacheItinerarios.invalidar(usuarioId);
     return reserva;
   },
 
   async eliminarReserva(usuarioId: string, reservaId: string): Promise<void> {
     await viajeDeLaReserva(usuarioId, reservaId);
     await ViajeRepository.eliminarReserva(reservaId);
+    await CacheItinerarios.invalidar(usuarioId);
   },
 
   // UC-01 / QA-03b: lo invoca el ItinerarioEmailConsumer. El contenido del correo solo se
@@ -210,7 +230,9 @@ export const ViajeService = {
 
   // Ciclo de vida (UC-02): una vez completado, el viaje sale de la vista principal.
   // Lo invoca el ArchivadoJob en el proceso Worker.
-  archivarCompletados(ahora = new Date()) {
-    return ViajeRepository.archivarFinalizadosAntesDe(ahora);
+  async archivarCompletados(ahora = new Date()) {
+    const archivados = await ViajeRepository.archivarFinalizadosAntesDe(ahora);
+    for (const usuarioId of new Set(archivados.map((v) => v.usuarioId))) await CacheItinerarios.invalidar(usuarioId);
+    return archivados;
   },
 };

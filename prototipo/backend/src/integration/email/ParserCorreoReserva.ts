@@ -8,6 +8,7 @@
 //   Desde: 2026-12-02 15:00
 //   Hasta: 2026-12-06 11:00
 //   Zona horaria: Europe/Lisbon
+//   Zona horaria llegada: Europe/Madrid   (opcional: si el fin ocurre en otro lugar)
 //   Dirección: Travessa do Salitre 7, Lisboa
 //   Destino: Lisboa, Portugal
 //   Precio: 520.00 EUR
@@ -58,6 +59,7 @@ export function extraerDatosViaje(correo: CorreoEntrante): ReservaExterna | null
   const inicio = fechaLocal(c.desde, zona);
   if (!inicio) return null;
 
+  const zonaLlegada = zonaValida(c["zona horaria llegada"]) ? c["zona horaria llegada"] : undefined;
   const precio = /^([\d.]+)\s+([A-Z]{3})$/.exec(c.precio ?? "");
   return {
     estado: ESTADOS[sinAcentos(c.estado ?? "")] ?? "CONFIRMADA",
@@ -68,8 +70,9 @@ export function extraerDatosViaje(correo: CorreoEntrante): ReservaExterna | null
       proveedor: c.proveedor,
       codigoConfirmacion: c.codigo,
       inicio,
-      fin: fechaLocal(c.hasta, zona) ?? null,
+      fin: fechaLocal(c.hasta, zonaLlegada ?? zona) ?? null,
       ubicacion: { zonaHoraria: zona, direccion: c.direccion },
+      ubicacionFin: zonaLlegada ? { zonaHoraria: zonaLlegada } : undefined,
       precio: precio ? { valor: Number(precio[1]), moneda: precio[2] } : undefined,
     },
   };

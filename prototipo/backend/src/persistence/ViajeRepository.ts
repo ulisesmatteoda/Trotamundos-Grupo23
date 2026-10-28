@@ -15,6 +15,7 @@ const aReserva = (f: Fila): Reserva => ({
   inicio: f.inicio,
   fin: f.fin,
   ubicacion: f.ubicacion ?? undefined,
+  ubicacionFin: f.ubicacion_fin ?? undefined,
   precio: f.precio ?? undefined,
   origen: f.origen,
   estado: f.estado,
@@ -89,8 +90,8 @@ export const ViajeRepository = {
 
   async crearReserva(viajeId: string, datos: DatosReserva, origen: OrigenReserva): Promise<Reserva> {
     const { rows } = await db.query(
-      `INSERT INTO reserva (viaje_id, tipo, titulo, proveedor, codigo_confirmacion, inicio, fin, ubicacion, precio, origen)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+      `INSERT INTO reserva (viaje_id, tipo, titulo, proveedor, codigo_confirmacion, inicio, fin, ubicacion, precio, origen, ubicacion_fin)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
       [
         viajeId,
         datos.tipo,
@@ -102,6 +103,7 @@ export const ViajeRepository = {
         datos.ubicacion ?? null,
         datos.precio ?? null,
         origen,
+        datos.ubicacionFin ?? null,
       ],
     );
     return aReserva(rows[0]);
@@ -110,7 +112,7 @@ export const ViajeRepository = {
   async actualizarReserva(reservaId: string, datos: DatosReserva): Promise<Reserva> {
     const { rows } = await db.query(
       `UPDATE reserva SET tipo = $2, titulo = $3, proveedor = $4, codigo_confirmacion = $5, inicio = $6, fin = $7,
-              ubicacion = $8, precio = $9, estado = 'MODIFICADA', actualizado_en = now()
+              ubicacion = $8, precio = $9, ubicacion_fin = $10, estado = 'MODIFICADA', actualizado_en = now()
        WHERE id = $1 RETURNING *`,
       [
         reservaId,
@@ -122,6 +124,7 @@ export const ViajeRepository = {
         datos.fin ?? null,
         datos.ubicacion ?? null,
         datos.precio ?? null,
+        datos.ubicacionFin ?? null,
       ],
     );
     return aReserva(rows[0]);
@@ -146,9 +149,9 @@ export const ViajeRepository = {
     const { rows } = await db.query(
       `UPDATE reserva SET tipo = $2, titulo = $3, inicio = $4, fin = $5,
               ubicacion = coalesce($6, ubicacion), precio = coalesce($7, precio),
-              estado = $8, actualizado_en = now()
+              ubicacion_fin = coalesce($9, ubicacion_fin), estado = $8, actualizado_en = now()
        WHERE id = $1 RETURNING *`,
-      [reservaId, datos.tipo, datos.titulo, datos.inicio, datos.fin ?? null, datos.ubicacion ?? null, datos.precio ?? null, estado],
+      [reservaId, datos.tipo, datos.titulo, datos.inicio, datos.fin ?? null, datos.ubicacion ?? null, datos.precio ?? null, estado, datos.ubicacionFin ?? null],
     );
     return aReserva(rows[0]);
   },

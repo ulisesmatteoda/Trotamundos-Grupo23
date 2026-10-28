@@ -39,6 +39,14 @@ Para volver a los datos iniciales: `docker compose down -v && docker compose up 
 4. En la app, "Integraciones → Sincronizar" con cada proveedor: el hotel no se duplica y el tren se agrupa en el mismo viaje.
 5. En el simulador, disparar los webhooks (reprogramar vuelo, cancelar hotel): el cambio se refleja al instante.
 
+### Demo de caché e idiomas (Fase 3)
+
+1. En la app, abrir las herramientas del navegador (F12 → Red) y recargar: `GET /api/viajes` responde `X-Cache: MISS` la primera vez y `HIT` las siguientes. Al editar algo vuelve a `MISS`.
+2. Cambiar el idioma con el selector (Español, English, Português): la API no se vuelve a llamar con otro idioma, solo se descarga el paquete `/locales/xx.json`.
+3. El vuelo EZE → MAD muestra la salida en hora de Buenos Aires y la llegada en hora de Madrid.
+4. Ingresar como `bruno@trotamundos.test`: la app aparece en inglés (preferencia de su cuenta).
+5. `docker compose stop redis`: la app sigue funcionando (todo `MISS`); `docker compose start redis` y vuelve a cachear.
+
 Escalar los workers asincrónicos (ADR-006) y ver el reparto con "Ráfaga de 12 correos":
 
 ```bash
@@ -71,7 +79,7 @@ docker compose down -v
 | 0 | Esqueleto, contratos (OpenAPI + eventos), docker compose, healthchecks | ✅ |
 | 1 | UC-02 gestión manual, archivado automático, JWT | ✅ |
 | 2 | UC-01 ingesta de correos (Pub-Sub), whitelist, adaptadores de agencias | ✅ |
-| 3 | Cache-Aside con Redis, i18n en el cliente | Pendiente |
+| 3 | Cache-Aside con Redis, i18n en el cliente, zona horaria del destino | ✅ |
 | 4 | Envelope encryption, revocación, compartición con designados | Pendiente |
 | 5 | Redes sociales, agencia preferida, GPS | Pendiente |
 | 6 | Réplica de lectura + ETL + Data Warehouse, réplicas del backend | Pendiente |

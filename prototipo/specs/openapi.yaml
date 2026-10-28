@@ -723,7 +723,14 @@ components:
         codigoConfirmacion: { type: string }
         inicio: { type: string, format: date-time }
         fin: { type: string, format: date-time, nullable: true }
-        ubicacion: { $ref: "#/components/schemas/Ubicacion" }
+        ubicacion:
+          description: Lugar del inicio. Su zonaHoraria se usa para mostrar `inicio` (y `fin` si no hay ubicacionFin).
+          allOf: [{ $ref: "#/components/schemas/Ubicacion" }]
+        ubicacionFin:
+          description: |
+            Lugar del fin cuando es distinto del inicio (vuelos, trenes, autobuses). Su zonaHoraria se
+            usa para mostrar `fin` en la hora local del destino (QA-06d, ADR-008). Desde la Fase 3.
+          allOf: [{ $ref: "#/components/schemas/Ubicacion" }]
         precio: { $ref: "#/components/schemas/Monto" }
 
     Reserva:

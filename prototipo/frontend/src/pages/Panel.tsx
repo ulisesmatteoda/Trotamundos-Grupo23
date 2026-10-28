@@ -8,7 +8,9 @@ import { ReservaForm } from "../components/ReservaForm";
 import { ViajeCard } from "../components/ViajeCard";
 import { ViajeForm } from "../components/ViajeForm";
 import { useSesion } from "../sesion";
-import { mensajeError } from "../textos";
+import { useI18n } from "../i18n/I18nProvider";
+import { useMensajes } from "../i18n/errores";
+import { SelectorIdioma } from "../i18n/SelectorIdioma";
 
 // Refresco periódico para que las reservas que llegan por correo o por las agencias
 // aparezcan sin recargar (QA-01a: reflejadas en menos de 5 minutos).
@@ -23,8 +25,11 @@ type Edicion =
 
 export function Panel() {
   const { usuario, salir } = useSesion();
+  const { t } = useI18n();
+  const { mensajeError } = useMensajes();
   const [archivados, setArchivados] = useState(false);
   const [viajes, setViajes] = useState<Viaje[] | null>(null);
+  // Se guarda el código y no el texto, para que el mensaje siga al idioma elegido.
   const [error, setError] = useState<string | null>(null);
   const [edicion, setEdicion] = useState<Edicion | null>(null);
 
@@ -33,7 +38,7 @@ export function Panel() {
       setViajes(await api.listarViajes(archivados));
       setError(null);
     } catch (err) {
-      setError(mensajeError(err instanceof ErrorApi ? err.codigo : "ERROR_INTERNO"));
+      setError(err instanceof ErrorApi ? err.codigo : "ERROR_INTERNO");
     }
   }, [archivados]);
 
@@ -56,7 +61,7 @@ export function Panel() {
       await accion();
       await cargar();
     } catch (err) {
-      setError(mensajeError(err instanceof ErrorApi ? err.codigo : "ERROR_INTERNO"));
+      setError(err instanceof ErrorApi ? err.codigo : "ERROR_INTERNO");
     }
   }
 
@@ -65,32 +70,33 @@ export function Panel() {
       <header className="barra">
         <strong className="marca">Trotamundos</strong>
         <span className="tenue">{usuario?.nombre}</span>
-        <button onClick={() => setEdicion({ tipo: "integraciones" })}>Integraciones</button>
-        <button onClick={salir}>Salir</button>
+        <SelectorIdioma />
+        <button onClick={() => setEdicion({ tipo: "integraciones" })}>{t("barra.integraciones")}</button>
+        <button onClick={salir}>{t("barra.salir")}</button>
       </header>
 
       <main className="contenedor">
         <div className="panel-encabezado">
           <div className="pestanas" role="tablist">
             <button role="tab" aria-selected={!archivados} className={!archivados ? "activa" : ""} onClick={() => setArchivados(false)}>
-              Mis viajes
+              {t("panel.misViajes")}
             </button>
             <button role="tab" aria-selected={archivados} className={archivados ? "activa" : ""} onClick={() => setArchivados(true)}>
-              Archivados
+              {t("panel.archivados")}
             </button>
           </div>
           {!archivados && (
             <button className="primario" onClick={() => setEdicion({ tipo: "nuevo-viaje" })}>
-              + Nuevo viaje
+              {t("panel.nuevoViaje")}
             </button>
           )}
         </div>
 
-        {error && <p className="error" role="alert">{error}</p>}
-        {!viajes && !error && <p className="tenue">Cargando…</p>}
+        {error && <p className="error" role="alert">{mensajeError(error)}</p>}
+        {!viajes && !error && <p className="tenue">{t("comun.cargando")}</p>}
         {viajes?.length === 0 && (
           <p className="vacio tenue">
-            {archivados ? "Todavía no tenés viajes archivados." : "No tenés viajes activos. Creá uno para empezar."}
+            {archivados ? t("panel.vacioArchivados") : t("panel.vacioActivos")}
           </p>
         )}
 
@@ -99,26 +105,26 @@ export function Panel() {
             key={v.id}
             viaje={v}
             onEditar={() => setEdicion({ tipo: "editar-viaje", viaje: v })}
-            onEliminar={() => confirmarYEjecutar(`¿Eliminar "${v.nombre}" y todas sus reservas?`, () => api.eliminarViaje(v.id))}
+            onEliminar={() => confirmarYEjecutar(t("panel.confirmarEliminarViaje", { nombre: v.nombre }), () => api.eliminarViaje(v.id))}
             onAgregarReserva={() => setEdicion({ tipo: "nueva-reserva", viaje: v })}
             onEditarReserva={(r) => setEdicion({ tipo: "editar-reserva", reserva: r })}
-            onEliminarReserva={(r) => confirmarYEjecutar(`¿Eliminar la reserva "${r.titulo}"?`, () => api.eliminarReserva(r.id))}
+            onEliminarReserva={(r) => confirmarYEjecutar(t("panel.confirmarEliminarReserva", { titulo: r.titulo }), () => api.eliminarReserva(r.id))}
           />
         ))}
       </main>
 
       {edicion?.tipo === "integraciones" && (
-        <Modal titulo="Integraciones" onCerrar={cerrar}>
+        <Modal titulo={t("integraciones.titulo")} onCerrar={cerrar}>
           <Integraciones onSincronizado={cargar} />
         </Modal>
       )}
       {edicion?.tipo === "nuevo-viaje" && (
-        <Modal titulo="Nuevo viaje" onCerrar={cerrar}>
+        <Modal titulo={t("panel.tituloNuevoViaje")} onCerrar={cerrar}>
           <ViajeForm onCancelar={cerrar} onGuardar={async (d: ViajeInput) => (await api.crearViaje(d), trasGuardar())} />
         </Modal>
       )}
       {edicion?.tipo === "editar-viaje" && (
-        <Modal titulo="Editar viaje" onCerrar={cerrar}>
+        <Modal titulo={t("panel.tituloEditarViaje")} onCerrar={cerrar}>
           <ViajeForm
             inicial={edicion.viaje}
             onCancelar={cerrar}
@@ -127,7 +133,7 @@ export function Panel() {
         </Modal>
       )}
       {edicion?.tipo === "nueva-reserva" && (
-        <Modal titulo={`Nueva reserva en "${edicion.viaje.nombre}"`} onCerrar={cerrar}>
+        <Modal titulo={t("panel.tituloNuevaReserva", { viaje: edicion.viaje.nombre })} onCerrar={cerrar}>
           <ReservaForm
             onCancelar={cerrar}
             onGuardar={async (d: ReservaInput) => (await api.agregarReserva(edicion.viaje.id, d), trasGuardar())}
@@ -135,7 +141,7 @@ export function Panel() {
         </Modal>
       )}
       {edicion?.tipo === "editar-reserva" && (
-        <Modal titulo="Editar reserva" onCerrar={cerrar}>
+        <Modal titulo={t("panel.tituloEditarReserva")} onCerrar={cerrar}>
           <ReservaForm
             inicial={edicion.reserva}
             onCancelar={cerrar}
