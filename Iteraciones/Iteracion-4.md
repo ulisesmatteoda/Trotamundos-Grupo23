@@ -196,9 +196,9 @@ graph TD
 El diseño desarrollado en esta cuarta iteración resolvió de forma completa los requisitos de rendimiento en el frontend, latencia de red e internacionalización. En primer lugar, la **Vista de Módulos (Estructura de Descomposición)** permitió estructurar el cliente para desacoplar completamente las cadenas de texto visuales de la lógica Core, delegando el formateo regional (monedas, fechas y zonas horarias) a proveedores cliente aislados (`QA-06`). En segundo lugar, la **Vista C&C** instanció la infraestructura de borde (CDN) para la entrega estática de activos/bundles e integró la capa de almacenamiento en memoria (*Redis In-Memory Cache*) mediante el patrón *Cache-Aside*, reduciendo la latencia de consulta de itinerarios a rangos sub-100ms y eliminando la contención de lecturas sobre la base operacional `PostgreSQL OLTP` (`QA-01b, c`).
 
 **Estado consolidado del proyecto:**
-Con el cumplimiento de los drivers abordados en esta iteración, se ha alcanzado la cobertura total del backlog de requerimientos funcionales, escenarios de atributos de calidad y restricciones planteadas para el sistema Trotamundos.
+Con los drivers tratados en esta iteración se cubre la mayor parte del backlog de requerimientos funcionales, escenarios de atributos de calidad y restricciones. Al revisar el backlog completo contra el documento de drivers se detectaron escenarios que todavía no tenían una decisión de diseño asociada (`QA-03c`, `QA-03d`, `QA-06c`) y uno cubierto solo en parte (`QA-04b`).
 
-A continuación, se presenta la tabla con el estado final consolidado del backlog tras concluir la Iteración 4:
+A continuación, se presenta la tabla con el estado del backlog tras concluir la Iteración 4:
 
 ### Estado actualizado del Backlog de Drivers (Fin de Iteración 4)
 
@@ -213,11 +213,15 @@ A continuación, se presenta la tabla con el estado final consolidado del backlo
 | **CON-02** | Protocolos de correo OAuth2/IMAP | Completamente Abordado | Resuelto en Iteración 3 mediante Auth Gateway y KMS. |
 | **UC-02** | Gestión manual de viaje | Completamente Abordado | Resuelto en Iteración 3 con soporte de persistencia relacional PostgreSQL. |
 | **CRN-03 / UC-03** | Segregación OLAP/OLTP | Completamente Abordado | Resuelto en Iteración 3 mediante Read Replicas y Pipeline ETL. |
-| **QA-04a,b,c,d** | Seguridad y Privacidad | Completamente Abordado | Resuelto en Iteración 3 con Auth Manager, JWT y Cifrado AES-256. |
+| **QA-04a,c,d** | Seguridad y Privacidad | Completamente Abordado | Resuelto en Iteración 3 con Auth Manager, JWT y Cifrado AES-256. |
+| **QA-04b** | Visualización de itinerarios compartidos | Parcialmente Abordado | La Iteración 3 garantiza autenticación (JWT), pero no se modeló el mecanismo de compartición ni la lista de personas designadas. Candidato para Iteración 5. |
 | **QA-02 / QA-07** | Redundancia y Escalado (Picos) | Completamente Abordado | Resuelto en Iteración 3 con Topología de Despliegue en la Nube y ASG. |
 | **QA-01b, c** | Optimizaciones de Red y Front | Completamente Abordado | Resuelto en Iteración 4 mediante CDN Edge y Redis In-Memory Cache. |
-| **QA-06** | Usabilidad e Internacionalización | Completamente Abordado | Resuelto en Iteración 4 mediante arquitectura de Módulos i18n en cliente y UTC backend. |
+| **QA-06a,b,d** | Usabilidad e Internacionalización | Completamente Abordado | Resuelto en Iteración 4 mediante arquitectura de Módulos i18n en cliente y UTC backend. |
+| **QA-06c** | Resolución de problemas durante una disrupción | No Tratado | Depende de la integración con la agencia preferida (`QA-03d`). Candidato para Iteración 5. |
+| **QA-03c** | Interoperabilidad con Redes Sociales | No Tratado | Presente en el Diagrama de Contexto (Iteración 1), pero sin componentes ni decisiones asociadas. Candidato para Iteración 5. |
+| **QA-03d** | Interoperabilidad con Agencia Preferida | No Tratado | Presente en el Diagrama de Contexto (Iteración 1), pero sin componentes ni decisiones asociadas. Candidato para Iteración 5. |
 
-**Conclusión Final:**
-Al haber completado satisfactoriamente el abordaje de todos los drivers arquitectónicos prioritarios, el ciclo de diseño con el método ADD finaliza en esta cuarta iteración, dejando la arquitectura base del sistema completamente definida y lista para la fase de implementación del producto.
+**Conclusión de la Iteración 4:**
+Con esta iteración quedan abordados los drivers de mayor prioridad e impacto arquitectónico (estructura, asincronía, integración con proveedores, seguridad, datos, despliegue, caché e internacionalización). Sin embargo, al revisar el backlog se detectó que los escenarios de interoperabilidad con **Redes Sociales (`QA-03c`)** y con la **Agencia Preferida (`QA-03d`)** no fueron tratados, que la compartición de itinerarios con personas designadas (`QA-04b`) quedó solo parcialmente cubierta, y que la resolución de problemas durante una disrupción (`QA-06c`) depende de la integración con la agencia. Estos drivers se abordan en la **Iteración 5**.
 
