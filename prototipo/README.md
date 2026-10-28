@@ -26,7 +26,7 @@ Al arrancar con la base vacía se cargan dos usuarios (contraseña `demo1234`):
 
 | Usuario | Datos |
 |---|---|
-| `ana@trotamundos.test` | "Escapada a Madrid" (próximo) y "Fin de semana en Córdoba" (ya terminado: el `ArchivadoJob` lo archiva al iniciar). Whitelist: `@booking.com`, `@despegar.com`. Tiene reservas de Lisboa en Booking y Despegar simulados |
+| `ana@trotamundos.test` | "Escapada a Madrid" (próximo) y "Fin de semana en Córdoba" (ya terminado: el `ArchivadoJob` lo archiva al iniciar). Whitelist: `@booking.com`, `@despegar.com`. Tiene reservas de Lisboa en Booking, Despegar y el operador de trenes simulados |
 | `bruno@trotamundos.test` | "Ski en Bariloche" (sirve para comprobar que un usuario no ve los viajes de otro) |
 
 Para volver a los datos iniciales: `docker compose down -v && docker compose up -d`.
@@ -36,7 +36,7 @@ Para volver a los datos iniciales: `docker compose down -v && docker compose up 
 1. Entrar a http://localhost:8080 como Ana y dejar el panel abierto.
 2. En el simulador (http://localhost:4000) enviar "Booking confirma el hotel de Lisboa" y "Despegar confirma el vuelo": en ≤ 10 s aparece el viaje "Lisboa, Portugal" sin recargar.
 3. Enviar el correo del remitente no seguro y la newsletter: se ignoran (ver `docker compose logs -f worker`).
-4. En la app, "Integraciones → Sincronizar" con cada proveedor: el hotel no se duplica y el vuelo queda en el mismo viaje.
+4. En la app, "Integraciones → Sincronizar" con cada proveedor: el hotel no se duplica y el tren se agrupa en el mismo viaje.
 5. En el simulador, disparar los webhooks (reprogramar vuelo, cancelar hotel): el cambio se refleja al instante.
 
 Escalar los workers asincrónicos (ADR-006) y ver el reparto con "Ráfaga de 12 correos":

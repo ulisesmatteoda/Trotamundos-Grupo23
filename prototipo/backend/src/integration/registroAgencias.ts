@@ -4,8 +4,10 @@ import { config } from "../config";
 import { IAgenciaAdapter } from "./IAgenciaAdapter";
 import { BookingAdapter } from "./adapters/BookingAdapter";
 import { DespegarAdapter } from "./adapters/DespegarAdapter";
+import { TrenAdapter } from "./adapters/TrenAdapter";
 
 export const adaptadoresDeAgencias = (): IAgenciaAdapter[] => [
   new BookingAdapter(`${config.agenciasUrl}/booking`),
   new DespegarAdapter(`${config.agenciasUrl}/despegar`),
+  new TrenAdapter(`${config.agenciasUrl}/tren`),
 ];

@@ -71,6 +71,24 @@ function crearDatos() {
         tarifa: { total: "1.380,50", moneda: "USD" },
       },
     },
+    tren: {
+      "CP-4410": {
+        pnr: "CP-4410",
+        state: "BOOKED",
+        passenger_email: ana.email,
+        operator: "CP Comboios de Portugal",
+        journey: {
+          from: "Lisboa Santa Apolónia",
+          to: "Porto Campanhã",
+          to_city: "Porto",
+          country: "Portugal",
+          tz: "Europe/Lisbon",
+          departure_utc: utc(40, 13).toISOString(),
+          arrival_utc: utc(40, 15, 50).toISOString(),
+        },
+        fare: { value: 39.9, ccy: "EUR" },
+      },
+    },
   };
 }
 

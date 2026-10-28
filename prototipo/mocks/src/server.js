@@ -1,6 +1,7 @@
 // Sistemas externos simulados (fuera de los límites de Trotamundos, Diagrama de Contexto - Iteración 1).
 //   /booking    API de Booking (hoteles)        — formato propietario en inglés
 //   /despegar   API de Despegar (vuelos)        — formato propietario en español
+//   /tren       API de un operador ferroviario  — formato propietario (QA-05a)
 //   /_simular   acciones que dispara el simulador web (http://localhost:4000)
 // Los sistemas externos entran a Trotamundos por la puerta pública (nginx → API Gateway),
 // igual que lo haría un proveedor real.
@@ -38,6 +39,15 @@ app.get("/despegar/api/reservas", (req, res) => {
 app.get("/despegar/api/reservas/:codigo", (req, res) => {
   const r = datos.despegar[req.params.codigo];
   r ? res.json(r) : res.status(404).json({ mensaje: "Reserva inexistente" });
+});
+
+app.get("/tren/v1/bookings", (req, res) => {
+  const email = String(req.query.email ?? "").toLowerCase();
+  res.json({ bookings: Object.values(datos.tren).filter((b) => b.passenger_email.toLowerCase() === email) });
+});
+app.get("/tren/v1/bookings/:pnr", (req, res) => {
+  const b = datos.tren[req.params.pnr];
+  b ? res.json(b) : res.status(404).json({ error: "PNR_NOT_FOUND" });
 });
 
 // ---------------------------------------------------------------- Llamadas a Trotamundos
@@ -103,6 +113,14 @@ sim.post("/despegar/cambio-horario", async (_req, res) => {
   r.vuelo.llegada = correos.sumarHorasTexto(r.vuelo.llegada, 2);
   r.estado = "REPROGRAMADA";
   res.json(await llamarTrotamundos("/integraciones/agencias/despegar/webhook", { codigoReserva: r.codigoReserva, novedad: "CAMBIO_HORARIO" }));
+});
+
+sim.post("/tren/cambio", async (_req, res) => {
+  const b = datos.tren["CP-4410"];
+  b.journey.departure_utc = masHoras(b.journey.departure_utc, 1);
+  b.journey.arrival_utc = masHoras(b.journey.arrival_utc, 1);
+  b.state = "CHANGED";
+  res.json(await llamarTrotamundos("/integraciones/agencias/tren/webhook", { pnr: b.pnr, type: "BOOKING_CHANGED" }));
 });
 
 sim.post("/restablecer", (_req, res) => {

@@ -51,6 +51,7 @@ export const ESTADO_RESERVA: Record<string, string> = {
 export const NOMBRE_AGENCIA: Record<string, string> = {
   booking: "Booking",
   despegar: "Despegar",
+  tren: "Trenes",
 };
 
 export const mensajeError = (codigo: string) => ERRORES[codigo] ?? ERRORES.ERROR_INTERNO;

@@ -53,7 +53,7 @@
     <main>
       <header>
         <h1>Simulador de sistemas externos</h1>
-        <p>Proveedor de correo, Booking y Despegar. Cada acción llama a Trotamundos por su puerta pública (nginx → API Gateway). Mirá el resultado en <a href="http://localhost:8080" target="_blank">localhost:8080</a>.</p>
+        <p>Proveedor de correo, Booking, Despegar y el operador de trenes. Cada acción llama a Trotamundos por su puerta pública (nginx → API Gateway). Mirá el resultado en <a href="http://localhost:8080" target="_blank">localhost:8080</a>.</p>
       </header>
 
       <div class="grilla">
@@ -76,6 +76,11 @@
         <section>
           <h2>Despegar (vuelos)</h2>
           <button data-accion="/despegar/cambio-horario">Reprogramar DSP-90211 +2 h (webhook)</button>
+        </section>
+
+        <section>
+          <h2>Operador de trenes (QA-05a)</h2>
+          <button data-accion="/tren/cambio">Cambio de horario CP-4410 +1 h (webhook)</button>
         </section>
 
         <section>
