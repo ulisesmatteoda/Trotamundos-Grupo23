@@ -20,6 +20,10 @@ x-backend-env: &backend-env
   CORREO_AUTORIZACION_URL: http://localhost:4000/oauth/autorizar
   CORREO_CLIENT_ID: trotamundos
   CORREO_CLIENT_SECRET: &correo-secret trotamundos-demo-oauth-secret
+  # Redes sociales simuladas (QA-03c): token de la aplicación Trotamundos.
+  SOCIAL_URL: http://mocks:4000/social
+  SOCIAL_TOKEN_APP: &social-token trotamundos-demo-social-token
+  URL_PUBLICA: http://localhost:8080
 
 services:
   # --- Capa de Datos -------------------------------------------------------
@@ -106,6 +110,7 @@ services:
       TROTAMUNDOS_URL: http://web/api
       WEBHOOK_SECRET: *webhook-secret
       OAUTH_CLIENT_SECRET: *correo-secret
+      SOCIAL_TOKEN_APP: *social-token
     ports:
       - "4000:4000"
     healthcheck:

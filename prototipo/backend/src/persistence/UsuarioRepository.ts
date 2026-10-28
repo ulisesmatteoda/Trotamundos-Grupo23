@@ -22,8 +22,11 @@ export const UsuarioRepository = {
     };
   },
 
-  async porId(id: string): Promise<{ id: string; nombre: string; email: string } | null> {
-    const { rows } = await db.query("SELECT id, nombre, email FROM usuario WHERE id = $1", [id]);
+  async porId(id: string): Promise<{ id: string; nombre: string; email: string; agenciaPreferida: string } | null> {
+    const { rows } = await db.query(
+      "SELECT id, nombre, email, agencia_preferida AS \"agenciaPreferida\" FROM usuario WHERE id = $1",
+      [id],
+    );
     return rows[0] ?? null;
   },
 

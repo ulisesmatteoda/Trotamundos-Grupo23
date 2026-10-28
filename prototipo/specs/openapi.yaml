@@ -467,22 +467,25 @@ paths:
                   items: { type: string, format: email }
                 redSocial:
                   type: string
-                  enum: [facebook, x]
-                  description: Si se indica, se publica texto + enlace (nunca el itinerario). Desde Fase 5.
+                  description: |
+                    Nombre de un adaptador de red social registrado (ver GET /integraciones/redes).
+                    Si se indica, se publica `mensaje` + enlace, nunca el itinerario (ADR-010). Desde Fase 5.
+                  example: facebook
+                mensaje:
+                  type: string
+                  maxLength: 200
+                  description: Texto de la publicación, escrito por el usuario en su idioma (el backend no traduce, ADR-008)
       responses:
         "201":
-          description: Viaje compartido
+          description: |
+            Viaje compartido. Si se pidió publicar, `publicacion.estado` indica si la red social
+            aceptó la publicación (timeout de 2 s, QA-03c); el compartido se crea igual.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Compartido" }
         "400": { $ref: "#/components/responses/Invalido" }
         "401": { $ref: "#/components/responses/NoAutorizado" }
         "404": { $ref: "#/components/responses/NoEncontrado" }
-        "502":
-          description: El viaje se compartió pero la red social rechazó la publicación
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
 
   /viajes/{viajeId}/compartidos:
     parameters:
@@ -546,6 +549,22 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NoEncontrado" }
+
+  /integraciones/redes:
+    get:
+      tags: [Integraciones]
+      summary: Lista las redes sociales con un adaptador registrado
+      x-fase: 5
+      x-trazabilidad: [QA-03c, ADR-009]
+      responses:
+        "200":
+          description: Nombres de los adaptadores de redes sociales
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: string, example: facebook }
+        "401": { $ref: "#/components/responses/NoAutorizado" }
 
   /reservas/{reservaId}/asistencia:
     parameters:
@@ -845,9 +864,13 @@ components:
         publicacion:
           type: object
           nullable: true
+          required: [redSocial, estado]
           properties:
             redSocial: { type: string }
-            idExterno: { type: string }
+            estado: { type: string, enum: [PUBLICADA, FALLIDA] }
+            idExterno: { type: string, nullable: true }
+            url: { type: string, nullable: true }
+            error: { type: string, nullable: true, description: Código de error si estado = FALLIDA }
 
     ViajeCompartido:
       allOf:
@@ -863,8 +886,12 @@ components:
       properties:
         id: { type: string, format: uuid }
         reservaId: { type: string, format: uuid }
+        agencia: { type: string, description: Agencia preferida del usuario a la que se deriva }
         estado:
           type: string
           enum: [PENDIENTE, DERIVADO]
+          description: PENDIENTE = la agencia no respondió a tiempo y se reintenta en segundo plano (ADR-009)
         ticketAgencia: { type: string, nullable: true }
+        intentos: { type: integer }
         creadoEn: { type: string, format: date-time }
+        actualizadoEn: { type: string, format: date-time }

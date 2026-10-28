@@ -66,6 +66,24 @@ export interface Compartido {
   enlaceId: string;
   designados: string[];
   estado: "ACTIVO" | "REVOCADO";
+  publicacion: Publicacion | null;
+}
+
+export interface Publicacion {
+  redSocial: string;
+  estado: "PUBLICADA" | "FALLIDA";
+  idExterno?: string | null;
+  url?: string | null;
+  error?: string | null;
+}
+
+export interface CasoSoporte {
+  id: string;
+  reservaId: string;
+  agencia: string;
+  estado: "PENDIENTE" | "DERIVADO";
+  ticketAgencia: string | null;
+  intentos: number;
 }
 
 export interface ViajeInput {

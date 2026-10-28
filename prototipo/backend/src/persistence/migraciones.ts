@@ -107,6 +107,31 @@ const MIGRACIONES: { version: number; sql: string }[] = [
       );
     `,
   },
+  {
+    version: 5,
+    sql: `
+      -- Agencia preferida del usuario para la resolución de problemas (QA-03d).
+      ALTER TABLE usuario ADD COLUMN agencia_preferida text NOT NULL DEFAULT 'despegar';
+
+      -- Resultado de la publicación en redes sociales de un compartido (QA-03c).
+      ALTER TABLE compartido ADD COLUMN publicacion jsonb;
+
+      -- Casos derivados a la agencia (ADR-009, Iteración 5). El id es también la clave de
+      -- idempotencia ante la agencia; el contexto guarda el 100% de los datos enviados (QA-06c).
+      CREATE TABLE caso_soporte (
+        id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        usuario_id     uuid NOT NULL REFERENCES usuario(id) ON DELETE CASCADE,
+        reserva_id     uuid REFERENCES reserva(id) ON DELETE SET NULL,
+        agencia        text NOT NULL,
+        contexto       jsonb NOT NULL,
+        estado         text NOT NULL DEFAULT 'PENDIENTE' CHECK (estado IN ('PENDIENTE', 'DERIVADO')),
+        ticket_agencia text,
+        intentos       int NOT NULL DEFAULT 0,
+        creado_en      timestamptz NOT NULL DEFAULT now(),
+        actualizado_en timestamptz NOT NULL DEFAULT now()
+      );
+    `,
+  },
 ];
 
 const LOCK_MIGRACIONES = 724_001;

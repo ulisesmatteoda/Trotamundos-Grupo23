@@ -1,5 +1,6 @@
 // Cliente HTTP del API Gateway. La Capa de Presentación solo habla con /api (Iteración 1, capas estrictas).
 import {
+  CasoSoporte,
   Compartido,
   ConexionCorreo,
   RemitenteSeguro,
@@ -78,8 +79,13 @@ export const api = {
     pedir<ConexionCorreo>("POST", "/correo/conexion", { proveedor: "gmail", codigo, redirectUri }),
   desconectarCorreo: () => pedir<void>("DELETE", "/correo/conexion"),
 
-  compartirViaje: (viajeId: string, designados: string[]) =>
-    pedir<Compartido>("POST", `/viajes/${viajeId}/compartir`, { designados }),
+  compartirViaje: (viajeId: string, designados: string[], redSocial?: string, mensaje?: string) =>
+    pedir<Compartido>("POST", `/viajes/${viajeId}/compartir`, { designados, redSocial, mensaje }),
+  listarRedes: () => pedir<string[]>("GET", "/integraciones/redes"),
+
+  solicitarAsistencia: (reservaId: string, descripcion?: string) =>
+    pedir<CasoSoporte>("POST", `/reservas/${reservaId}/asistencia`, { descripcion }),
+  obtenerCaso: (casoId: string) => pedir<CasoSoporte>("GET", `/casos/${casoId}`),
   listarCompartidos: (viajeId: string) => pedir<Compartido[]>("GET", `/viajes/${viajeId}/compartidos`),
   verCompartido: (enlaceId: string) => pedir<ViajeCompartido>("GET", `/compartidos/${encodeURIComponent(enlaceId)}`),
   revocarCompartido: (enlaceId: string) => pedir<void>("DELETE", `/compartidos/${encodeURIComponent(enlaceId)}`),

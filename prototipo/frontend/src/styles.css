@@ -469,3 +469,42 @@ legend {
   font-size: 0.8rem;
   word-break: break-all;
 }
+
+.aviso-texto {
+  color: #8a5a00;
+  margin: 0;
+}
+
+.contexto-caso {
+  margin: 0;
+  padding: 10px 12px 10px 28px;
+  background: var(--fondo);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+textarea {
+  font: inherit;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--borde);
+  border-radius: 6px;
+  background: var(--superficie);
+  color: var(--texto);
+  resize: vertical;
+}
+
+.acciones-reserva {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 45%;
+}
+
+@media (max-width: 560px) {
+  .acciones-reserva {
+    max-width: none;
+  }
+}

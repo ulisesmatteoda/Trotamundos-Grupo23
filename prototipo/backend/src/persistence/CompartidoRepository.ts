@@ -7,6 +7,15 @@ export interface Compartido {
   enlaceId: string;
   estado: "ACTIVO" | "REVOCADO";
   designados: string[];
+  publicacion: Publicacion | null;
+}
+
+export interface Publicacion {
+  redSocial: string;
+  estado: "PUBLICADA" | "FALLIDA";
+  idExterno?: string | null;
+  url?: string | null;
+  error?: string | null;
 }
 
 async function conDesignados(filas: any[]): Promise<Compartido[]> {
@@ -22,6 +31,7 @@ async function conDesignados(filas: any[]): Promise<Compartido[]> {
     enlaceId: f.enlace_id,
     estado: f.estado,
     designados: rows.filter((d) => d.compartido_id === f.id).map((d) => d.email),
+    publicacion: f.publicacion ?? null,
   }));
 }
 
@@ -38,7 +48,7 @@ export const CompartidoRepository = {
         await cliente.query("INSERT INTO compartido_designado (compartido_id, email) VALUES ($1, $2)", [rows[0].id, email]);
       }
       await cliente.query("COMMIT");
-      return { id: rows[0].id, viajeId, duenoId, enlaceId, estado: "ACTIVO", designados };
+      return { id: rows[0].id, viajeId, duenoId, enlaceId, estado: "ACTIVO", designados, publicacion: null };
     } catch (err) {
       await cliente.query("ROLLBACK");
       throw err;
@@ -58,6 +68,10 @@ export const CompartidoRepository = {
       [viajeId],
     );
     return conDesignados(rows);
+  },
+
+  async guardarPublicacion(id: string, publicacion: Publicacion): Promise<void> {
+    await db.query("UPDATE compartido SET publicacion = $2 WHERE id = $1", [id, publicacion]);
   },
 
   async revocar(id: string): Promise<void> {

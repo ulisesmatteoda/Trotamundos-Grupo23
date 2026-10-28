@@ -4,6 +4,7 @@ import { api, ErrorApi } from "../api/cliente";
 import { Reserva, ReservaInput, Viaje, ViajeInput } from "../api/tipos";
 import { Integraciones } from "../components/Integraciones";
 import { CompartirViaje } from "../components/CompartirViaje";
+import { PedirAyuda } from "../components/PedirAyuda";
 import { Aviso } from "../components/ConexionCorreo";
 import { CLAVE_RESULTADO } from "./CallbackOAuth";
 import { Modal } from "../components/Modal";
@@ -22,6 +23,7 @@ const REFRESCO_MS = 10_000;
 type Edicion =
   | { tipo: "integraciones"; avisoCorreo?: Aviso | null }
   | { tipo: "compartir"; viaje: Viaje }
+  | { tipo: "ayuda"; reserva: Reserva }
   | { tipo: "nuevo-viaje" }
   | { tipo: "editar-viaje"; viaje: Viaje }
   | { tipo: "nueva-reserva"; viaje: Viaje }
@@ -131,6 +133,7 @@ export function Panel() {
               onEliminar: () => confirmarYEjecutar(t("panel.confirmarEliminarViaje", { nombre: v.nombre }), () => api.eliminarViaje(v.id)),
               onAgregarReserva: () => setEdicion({ tipo: "nueva-reserva", viaje: v }),
               onEditarReserva: (r) => setEdicion({ tipo: "editar-reserva", reserva: r }),
+              onPedirAyuda: (r) => setEdicion({ tipo: "ayuda", reserva: r }),
               onEliminarReserva: (r) =>
                 confirmarYEjecutar(t("panel.confirmarEliminarReserva", { titulo: r.titulo }), () => api.eliminarReserva(r.id)),
             }}
@@ -141,6 +144,11 @@ export function Panel() {
       {edicion?.tipo === "integraciones" && (
         <Modal titulo={t("integraciones.titulo")} onCerrar={cerrar}>
           <Integraciones onSincronizado={cargar} avisoCorreo={edicion.avisoCorreo} />
+        </Modal>
+      )}
+      {edicion?.tipo === "ayuda" && (
+        <Modal titulo={t("soporte.titulo", { titulo: edicion.reserva.titulo })} onCerrar={cerrar}>
+          <PedirAyuda reserva={edicion.reserva} />
         </Modal>
       )}
       {edicion?.tipo === "compartir" && (

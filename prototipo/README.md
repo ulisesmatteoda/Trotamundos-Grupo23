@@ -40,6 +40,13 @@ Para volver a los datos iniciales: `docker compose down -v && docker compose up 
 4. En la app, "Integraciones → Sincronizar" con cada proveedor: el hotel no se duplica y el tren se agrupa en el mismo viaje.
 5. En el simulador, disparar los webhooks (reprogramar vuelo, cancelar hotel): el cambio se refleja al instante.
 
+### Demo de redes, agencia y GPS (Fase 5)
+
+1. **Pedir ayuda (≤ 3 toques):** en una reserva, "Pedir ayuda" → "Enviar a mi agencia". Se ve el ticket de la agencia y, en el simulador (sección "Soporte de Despegar"), el caso con todos los datos de la reserva.
+2. **Agencia caída o lenta:** en el simulador elegir "Caída" o "Lenta" y pedir ayuda: el caso queda pendiente y se reintenta (`docker compose logs -f worker`). Al volver a "Normal", la pantalla se actualiza sola con el ticket. Con "Lenta" la agencia abre un solo caso aunque haya reintentos (idempotencia).
+3. **Publicar en redes:** en "Compartir", elegir Facebook o X y escribir el mensaje. En el simulador aparece la publicación: solo el texto y el enlace. Con "Simular caída de las redes" el enlace se crea igual.
+4. **Cómo llegar:** el botón en cada reserva abre la ruta desde tu ubicación (el navegador pide permiso la primera vez).
+
 ### Demo de seguridad (Fase 4)
 
 1. **Compartir:** como Ana, "Compartir" en "Escapada a Madrid" con `bruno@trotamundos.test` y copiar el enlace. Abrirlo en una ventana privada: pide login; como Bruno se ve en solo lectura, como Carla aparece "No tenés acceso" (y queda registrado).
@@ -90,7 +97,7 @@ docker compose down -v
 | 2 | UC-01 ingesta de correos (Pub-Sub), whitelist, adaptadores de agencias | ✅ |
 | 3 | Cache-Aside con Redis, i18n en el cliente, zona horaria del destino | ✅ |
 | 4 | OAuth2 con el correo, envelope encryption, revocación, auditoría, compartición con designados | ✅ |
-| 5 | Redes sociales, agencia preferida, GPS | Pendiente |
+| 5 | Redes sociales, agencia preferida con reintento asincrónico, GPS | ✅ |
 | 6 | Réplica de lectura + ETL + Data Warehouse, réplicas del backend | Pendiente |
 
 ## Simplificaciones respecto a la arquitectura documentada
@@ -100,10 +107,12 @@ y los contratos se mantienen iguales a los del diseño.
 
 1. **API Gateway:** no es un producto aparte. nginx es la entrada única y el módulo `backend/src/gateway/` concentra el ruteo y la validación de JWT.
 2. **KMS:** la clave maestra se toma de una variable de entorno (en producción, un KMS gestionado). El envelope encryption se implementa de verdad, con AES-256-GCM y una clave de datos por secreto. Se cifran los tokens de acceso al correo; el cifrado del resto de los datos en reposo se delegaría en el cifrado de disco de la base gestionada.
-9. **Alertas de seguridad:** se emiten como líneas `[ALERTA-SEGURIDAD]` en el log (lo que tomaría un SIEM) además de persistirse en `acceso_denegado_log`; no hay un sistema de notificación real.
 3. **Application Load Balancer / Auto-Scaling Group:** nginx balancea y los workers se escalan con `--scale` en forma manual; no hay autoescalado por métrica de la cola.
 4. **Gmail/Outlook, agencias y redes sociales:** son servicios simulados (`mocks`). Los adaptadores y contratos son los del diseño. El proveedor de correo empuja los mensajes al webhook de ingesta (variante *Push/Webhook* de la Iteración 2) en lugar de sondear por IMAP. La autorización sí es un flujo OAuth2 real (authorization code) contra el proveedor simulado.
 5. **CDN:** nginx sirviendo los estáticos con headers de caché.
 6. **App móvil:** se usa el SPA web responsive; el GPS se accede con la API de geolocalización del navegador.
 7. **TLS 1.3 / cifrado en tránsito interno:** no se configura TLS local para no complicar la ejecución.
 8. **Métricas de escala** (15M de cuentas, 5 min/mes de caída): no son medibles en un entorno local. Se demuestran las tácticas, no las cifras.
+9. **Alertas de seguridad:** se emiten como líneas `[ALERTA-SEGURIDAD]` en el log (lo que tomaría un SIEM) además de persistirse en `acceso_denegado_log`; no hay un sistema de notificación real.
+10. **Redes sociales y agencia de soporte:** son servicios simulados. La agencia preferida se guarda por usuario (todos usan Despegar en la demo) y no tiene pantalla para cambiarla.
+11. **Rutas (GPS):** se usa la API de geolocalización del navegador y se delega la ruta en Google Maps (abre la app nativa en el celular).

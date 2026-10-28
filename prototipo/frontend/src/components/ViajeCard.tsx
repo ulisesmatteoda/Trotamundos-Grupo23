@@ -2,6 +2,7 @@
 // Cada horario se muestra en la zona del lugar donde ocurre (QA-06d, ADR-008).
 import { Reserva, Viaje } from "../api/tipos";
 import { useI18n } from "../i18n/I18nProvider";
+import { comoLlegar, tieneDestino } from "../gps";
 
 // Sin `acciones` la tarjeta es de solo lectura (itinerario compartido, ADR-010).
 interface Acciones {
@@ -11,6 +12,7 @@ interface Acciones {
   onAgregarReserva: () => void;
   onEditarReserva: (r: Reserva) => void;
   onEliminarReserva: (r: Reserva) => void;
+  onPedirAyuda: (r: Reserva) => void;
 }
 
 interface Props {
@@ -80,18 +82,24 @@ export function ViajeCard({ viaje, acciones }: Props) {
                       .join(" · ")}
                   </span>
                 </div>
-                {acciones && (
-                  <div className="acciones-compactas">
-                    <button onClick={() => acciones.onEditarReserva(r)}>{t("comun.editar")}</button>
-                    <button
-                      className="peligro"
-                      onClick={() => acciones.onEliminarReserva(r)}
-                      aria-label={t("viaje.eliminarReserva", { titulo: r.titulo })}
-                    >
-                      ×
-                    </button>
-                  </div>
-                )}
+                <div className="acciones-compactas acciones-reserva">
+                  {tieneDestino(r.ubicacion) && r.estado !== "CANCELADA" && (
+                    <button onClick={() => comoLlegar(r.ubicacion!)}>{t("reserva.comoLlegar")}</button>
+                  )}
+                  {acciones && (
+                    <>
+                      <button onClick={() => acciones.onPedirAyuda(r)}>{t("reserva.pedirAyuda")}</button>
+                      <button onClick={() => acciones.onEditarReserva(r)}>{t("comun.editar")}</button>
+                      <button
+                        className="peligro"
+                        onClick={() => acciones.onEliminarReserva(r)}
+                        aria-label={t("viaje.eliminarReserva", { titulo: r.titulo })}
+                      >
+                        ×
+                      </button>
+                    </>
+                  )}
+                </div>
               </li>
             );
           })}

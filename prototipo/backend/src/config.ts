@@ -26,6 +26,16 @@ export const config = {
   correoAutorizacionUrl: process.env.CORREO_AUTORIZACION_URL ?? "http://localhost:4000/oauth/autorizar",
   correoClientId: process.env.CORREO_CLIENT_ID ?? "trotamundos",
   correoClientSecret: requerida("CORREO_CLIENT_SECRET"),
+  // Redes sociales (QA-03c): base de las APIs y token de la aplicación.
+  socialUrl: process.env.SOCIAL_URL ?? "http://mocks:4000/social",
+  socialTokenApp: process.env.SOCIAL_TOKEN_APP ?? "",
+  // URL pública de la aplicación, para armar el enlace que se publica en redes.
+  urlPublica: process.env.URL_PUBLICA ?? "http://localhost:8080",
+  // ADR-009: tiempo máximo de la llamada sincrónica a redes y agencia (QA-03c, QA-03d: < 2 s).
+  timeoutIntegracionMs: Number(process.env.TIMEOUT_INTEGRACION_MS ?? 2000),
+  // Reintentos asincrónicos de casos de soporte.
+  soporteReintentoMs: Number(process.env.SOPORTE_REINTENTO_MS ?? 5000),
+  soporteMaxIntentos: Number(process.env.SOPORTE_MAX_INTENTOS ?? 20),
   // Secreto compartido con los sistemas externos que llaman a nuestros webhooks.
   webhookSecret: requerida("WEBHOOK_SECRET"),
   // Base de las APIs de agencias (en el prototipo, el servicio de mocks).

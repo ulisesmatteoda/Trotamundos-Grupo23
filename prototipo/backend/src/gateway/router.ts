@@ -7,6 +7,7 @@ import * as viajes from "../api/controllers/ViajesController";
 import * as integraciones from "../api/controllers/IntegracionesController";
 import * as whitelist from "../api/controllers/WhitelistController";
 import * as seguridad from "../api/controllers/SeguridadController";
+import * as soporte from "../api/controllers/SoporteController";
 import { conErrores, manejarErrores } from "../api/manejoErrores";
 import { requerirJwt } from "./autenticacion";
 import { requerirSecretoWebhook } from "./webhook";
@@ -47,6 +48,10 @@ export function crearGateway(): Router {
   gateway.get("/compartidos/:enlaceId", conErrores(seguridad.verCompartido));
   gateway.delete("/compartidos/:enlaceId", conErrores(seguridad.revocarCompartido));
 
+  gateway.post("/reservas/:reservaId/asistencia", conErrores(soporte.solicitarAsistencia));
+  gateway.get("/casos/:casoId", conErrores(soporte.obtenerCaso));
+
+  gateway.get("/integraciones/redes", conErrores(seguridad.listarRedes));
   gateway.get("/integraciones/agencias", conErrores(integraciones.listarAgencias));
   gateway.post("/integraciones/agencias/:proveedor/sincronizar", conErrores(integraciones.sincronizarAgencia));
 

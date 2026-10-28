@@ -42,6 +42,21 @@ export class EventBus {
     canal.sendToQueue(cola, Buffer.from(JSON.stringify(evento)), { persistent: true, contentType: "application/json" });
   }
 
+  // Publicación diferida (reintentos con espera): el mensaje queda en <cola>.espera con un TTL
+  // y, al vencer, RabbitMQ lo reenvía a la cola principal (dead-lettering).
+  async publicarConDemora(cola: string, evento: object, demoraMs: number): Promise<void> {
+    const canal = await this.asegurarCola(cola);
+    await canal.assertQueue(`${cola}.espera`, {
+      durable: true,
+      arguments: { "x-dead-letter-exchange": "", "x-dead-letter-routing-key": cola },
+    });
+    canal.sendToQueue(`${cola}.espera`, Buffer.from(JSON.stringify(evento)), {
+      persistent: true,
+      contentType: "application/json",
+      expiration: String(demoraMs),
+    });
+  }
+
   // Un mensaje por worker a la vez (prefetch 1): así, al escalar workers,
   // la cola se reparte entre todos (ADR-006).
   async suscribir(cola: string, manejar: Manejador): Promise<void> {

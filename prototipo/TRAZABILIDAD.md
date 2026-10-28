@@ -95,9 +95,24 @@ prototipo. Se actualiza al cerrar cada fase.
 | Solo personas designadas ven el itinerario (con JWT) | QA-04b | `CompartirService.ver` | Bruno (designado) → 200 · Carla (no designada) → 403 en ~25 ms y queda registrado · sin sesión → 401 · enlace revocado → 404 |
 | Vista de solo lectura del itinerario compartido | ADR-010 | [`frontend/src/pages/VistaCompartida.tsx`](./frontend/src/pages/VistaCompartida.tsx) | Abrir el enlace sin sesión pide login y después muestra el viaje, sin botones de edición |
 
+### Fase 5 — Redes sociales, agencia preferida y GPS (Iteración 5)
+
+| Elemento arquitectónico | Origen | Código | Cómo se verifica |
+|---|---|---|---|
+| `IRedSocialAdapter` (ACL con interfaz segregada) | ADR-009, Iteración 5 (Vista de Módulos) | [`integration/redes/IRedSocialAdapter.ts`](./backend/src/integration/redes/IRedSocialAdapter.ts) | `GET /api/integraciones/redes` → `["facebook","x"]` |
+| `FacebookAdapter` / `XAdapter` (formatos distintos) | ADR-009, QA-03c | [`integration/redes/`](./backend/src/integration/redes) | Facebook: `message` + `link`. X: solo `text`, recortado a 280 con el enlace al final |
+| Publicación con timeout de 2 s, sin condicionar el compartido | QA-03c, ADR-009 | `CompartirService.compartir` | Publicación en ~50 ms; con la red caída el enlace se crea igual y `publicacion.estado = FALLIDA` |
+| A la red solo va texto + enlace, nunca el itinerario | ADR-010 | `CompartirService` → `PublicacionDTO` | El feed del simulador no contiene ningún dato de las reservas |
+| `IAgenciaSoporteAdapter` (separado de `IAgenciaAdapter`) | ADR-009 | [`integration/soporte/IAgenciaSoporteAdapter.ts`](./backend/src/integration/soporte/IAgenciaSoporteAdapter.ts) | — |
+| `DespegarSoporteAdapter` con clave de idempotencia (`casoId`) | ADR-009 | [`integration/soporte/DespegarSoporteAdapter.ts`](./backend/src/integration/soporte/DespegarSoporteAdapter.ts) | Agencia "lenta": el reintento recibe el mismo ticket; la agencia abre un solo caso |
+| `SoporteService`: contexto completo + llamada sincrónica con timeout de 2 s | QA-03d, QA-06c, ADR-009 | [`domain/SoporteService.ts`](./backend/src/domain/SoporteService.ts) | Derivación en ~30 ms; la agencia recibe localizador, horarios con zona, precio, dirección y descripción |
+| `CasoSoportePendienteEvent` + reintento con espera (cola `.espera` con TTL) | ADR-009, ADR-003 | [`messaging/EventBus.ts`](./backend/src/messaging/EventBus.ts) (`publicarConDemora`), [`specs/events/caso-soporte-pendiente.schema.json`](./specs/events/caso-soporte-pendiente.schema.json) | Colas `soporte.casos-pendientes`, `.espera` y `.dlq` en RabbitMQ |
+| `SoporteRetryConsumer` en el Worker Auto-Scaling Group | ADR-009, ADR-006 | [`workers/SoporteRetryConsumer.ts`](./backend/src/workers/SoporteRetryConsumer.ts) | Agencia caída: `intento 2…4 → REPROGRAMADO`, al volver `→ DERIVADO`; agotados los intentos, el caso va a la DLQ |
+| Resolución en ≤ 3 toques con el contexto precargado | QA-06c | [`frontend/src/components/PedirAyuda.tsx`](./frontend/src/components/PedirAyuda.tsx) | "Pedir ayuda" → "Enviar a mi agencia" (2 toques); si queda pendiente, la pantalla se actualiza sola al derivarse |
+| "Cómo llegar" con la ubicación del dispositivo | QA-06a | [`frontend/src/gps.ts`](./frontend/src/gps.ts) | Abre la ruta desde la posición actual hasta la reserva (1 toque + permiso la primera vez) |
+
 ## Pendiente por fase
 
 | Fase | Elementos |
 |---|---|
-| 5 | `IRedSocialAdapter`, `FacebookAdapter`, `XAdapter`, `SoporteService`, `IAgenciaSoporteAdapter`, `DespegarSoporteAdapter`, `SoporteRetryConsumer`, "Cómo llegar" |
 | 6 | Read Replica, ETL Pipeline Worker, Data Warehouse, réplicas del backend |

@@ -85,6 +85,24 @@
         </section>
 
         <section>
+          <h2>Redes sociales (QA-03c)</h2>
+          <button data-accion="/social/caida" data-cuerpo='{"activa":true}'>Simular caída de las redes</button>
+          <button data-accion="/social/caida" data-cuerpo='{"activa":false}'>Restablecer las redes</button>
+          <p class="pista">Últimas publicaciones recibidas (solo texto y enlace, nunca el itinerario):</p>
+          <div id="publicaciones" class="pista">…</div>
+        </section>
+
+        <section>
+          <h2>Soporte de Despegar (QA-03d)</h2>
+          <p class="pista">Modo de la API: <strong id="modo-soporte">…</strong></p>
+          <button data-accion="/soporte/modo" data-cuerpo='{"modo":"normal"}'>Normal (responde al instante)</button>
+          <button data-accion="/soporte/modo" data-cuerpo='{"modo":"lenta"}'>Lenta (4 s: supera el timeout de 2 s)</button>
+          <button data-accion="/soporte/modo" data-cuerpo='{"modo":"caida"}'>Caída (503)</button>
+          <p class="pista">Casos recibidos por la agencia (con todo el contexto):</p>
+          <div id="casos-soporte" class="pista">…</div>
+        </section>
+
+        <section>
           <h2>Datos</h2>
           <button data-accion="/restablecer">Restablecer los datos de los proveedores</button>
           <p class="pista">Solo afecta a los sistemas simulados, no a la base de Trotamundos.</p>
@@ -136,6 +154,29 @@
           .then((l) => (document.getElementById("autorizadas").textContent = l.join(", ") || "ninguna"));
       refrescarAutorizadas();
       setInterval(refrescarAutorizadas, 3000);
+
+      const texto = (s) => String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
+      function refrescarIteracion5() {
+        fetch("/_simular/social/publicaciones")
+          .then((r) => r.json())
+          .then((l) => {
+            document.getElementById("publicaciones").innerHTML = l.length
+              ? l.map((p) => `<div><strong>${p.red}</strong> · ${texto(p.texto)}${p.red === "facebook" ? ` <code>${texto(p.enlace)}</code>` : ""}</div>`).join("")
+              : "ninguna todavía";
+          });
+        fetch("/_simular/soporte/casos")
+          .then((r) => r.json())
+          .then((d) => {
+            document.getElementById("modo-soporte").textContent = d.modo;
+            document.getElementById("casos-soporte").innerHTML = d.casos.length
+              ? d.casos
+                  .map((c) => `<details><summary><strong>${c.ticket}</strong> · ${texto(c.cuerpo.cliente.nombreCompleto)} · ${texto(c.cuerpo.reservaAfectada.descripcion)}</summary><pre>${texto(JSON.stringify(c.cuerpo, null, 2))}</pre></details>`)
+                  .join("")
+              : "ninguno todavía";
+          });
+      }
+      refrescarIteracion5();
+      setInterval(refrescarIteracion5, 3000);
 
       fetch("/_simular/correo/plantillas")
         .then((r) => r.json())

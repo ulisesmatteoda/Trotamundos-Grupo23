@@ -6,7 +6,9 @@ import { manejarErrores } from "./api/manejoErrores";
 import { migrar } from "./persistence/migraciones";
 import { sembrarDemo } from "./persistence/seed";
 import { ViajeService } from "./domain/ViajeService";
-import { adaptadoresDeAgencias } from "./integration/registroAgencias";
+import { adaptadoresDeAgencias, adaptadoresDeRedes, adaptadoresDeSoporte } from "./integration/registroAgencias";
+import { CompartirService } from "./domain/CompartirService";
+import { SoporteService } from "./domain/SoporteService";
 import { ConexionCorreoService } from "./domain/ConexionCorreoService";
 import { GmailOAuthAdapter } from "./integration/email/GmailOAuthAdapter";
 
@@ -16,6 +18,8 @@ async function iniciar(): Promise<void> {
 
   // Raíz de composición: el core recibe los adaptadores, nunca los importa (ADR-002).
   ViajeService.configurarAgencias(adaptadoresDeAgencias());
+  CompartirService.configurarRedes(adaptadoresDeRedes());
+  SoporteService.configurarAgencias(adaptadoresDeSoporte());
   ConexionCorreoService.configurarProveedores([
     new GmailOAuthAdapter(config.correoOauthUrl, config.correoClientId, config.correoClientSecret),
   ]);

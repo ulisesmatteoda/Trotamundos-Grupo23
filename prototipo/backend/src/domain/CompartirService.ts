@@ -1,8 +1,12 @@
 // CompartirService (Iteración 5, ADR-010): compartición de itinerarios por enlace con una
 // lista de personas designadas. Solo el dueño y las personas designadas (autenticadas con
 // JWT) pueden ver el itinerario; cualquier otro intento se deniega y se registra (QA-04b).
+// Opcionalmente publica en una red social, a través de IRedSocialAdapter (ADR-009), solo el
+// texto del usuario y el enlace: nunca los datos del itinerario (QA-03c).
 import { randomBytes } from "crypto";
-import { CompartidoRepository, Compartido } from "../persistence/CompartidoRepository";
+import { config } from "../config";
+import type { IRedSocialAdapter } from "../integration/redes/IRedSocialAdapter";
+import { CompartidoRepository, Compartido, Publicacion } from "../persistence/CompartidoRepository";
 import { UsuarioRepository } from "../persistence/UsuarioRepository";
 import { AuditoriaSeguridad } from "../security/AuditoriaSeguridad";
 import { Sesion } from "../security/AuthService";
@@ -11,6 +15,10 @@ import { ViajeService } from "./ViajeService";
 import { Viaje } from "./modelo";
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+const MAX_MENSAJE = 200;
+
+// Los adaptadores de redes se inyectan desde la raíz de composición (server.ts).
+const redes = new Map<string, IRedSocialAdapter>();
 const MAX_DESIGNADOS = 20;
 
 // 144 bits aleatorios: el enlace no se puede adivinar ni recorrer.
@@ -31,12 +39,46 @@ async function compartidoDelDueno(sesion: Sesion, enlaceId: string): Promise<Com
   return c;
 }
 
+async function publicar(red: IRedSocialAdapter, compartido: Compartido, mensaje: string): Promise<Publicacion> {
+  const enlace = `${config.urlPublica}/compartido/${compartido.enlaceId}`;
+  try {
+    const r = await red.publicar({ texto: mensaje, enlace }, config.timeoutIntegracionMs);
+    return { redSocial: red.nombre, estado: "PUBLICADA", idExterno: r.idExterno, url: r.url };
+  } catch (err) {
+    const motivo = err instanceof ErrorDominio ? (err.detalle?.motivo as string) ?? err.codigo : "ERROR_INTERNO";
+    return { redSocial: red.nombre, estado: "FALLIDA", error: motivo };
+  }
+}
+
 export const CompartirService = {
-  async compartir(sesion: Sesion, viajeId: string, designados: unknown): Promise<Compartido> {
+  configurarRedes(lista: IRedSocialAdapter[]): void {
+    redes.clear();
+    for (const r of lista) redes.set(r.nombre, r);
+  },
+
+  redesDisponibles(): string[] {
+    return [...redes.keys()];
+  },
+
+  async compartir(sesion: Sesion, viajeId: string, designados: unknown, redSocial?: unknown, mensaje?: unknown): Promise<Compartido> {
     await ViajeService.obtener(sesion.usuarioId, viajeId); // 404 si el viaje no es del usuario
     const emails = validarDesignados(designados, sesion.email);
     if (emails.length === 0) throw invalido({ designados: "SOLO_EL_DUENO" });
-    return CompartidoRepository.crear(viajeId, sesion.usuarioId, nuevoEnlace(), emails);
+
+    let red: IRedSocialAdapter | undefined;
+    if (redSocial != null && redSocial !== "") {
+      red = typeof redSocial === "string" ? redes.get(redSocial) : undefined;
+      if (!red) throw invalido({ redSocial: "RED_DESCONOCIDA" });
+      if (typeof mensaje !== "string" || !mensaje.trim() || mensaje.length > MAX_MENSAJE) throw invalido({ mensaje: "TEXTO_INVALIDO" });
+    }
+
+    const compartido = await CompartidoRepository.crear(viajeId, sesion.usuarioId, nuevoEnlace(), emails);
+    if (!red) return compartido;
+
+    // La publicación no condiciona el compartido: si la red falla, el enlace igual existe.
+    const publicacion = await publicar(red, compartido, (mensaje as string).trim());
+    await CompartidoRepository.guardarPublicacion(compartido.id, publicacion);
+    return { ...compartido, publicacion };
   },
 
   async listar(sesion: Sesion, viajeId: string): Promise<Compartido[]> {
