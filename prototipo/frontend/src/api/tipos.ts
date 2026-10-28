@@ -1,0 +1,52 @@
+// Tipos de los DTOs, espejo de los schemas de specs/openapi.yaml.
+
+export interface Usuario {
+  id: string;
+  email: string;
+  nombre: string;
+  localePreferido?: string;
+}
+
+export interface Ubicacion {
+  direccion?: string;
+  lat?: number;
+  lng?: number;
+  zonaHoraria: string;
+}
+
+export interface Monto {
+  valor: number;
+  moneda: string;
+}
+
+export interface ReservaInput {
+  tipo: string;
+  titulo: string;
+  proveedor?: string;
+  codigoConfirmacion?: string;
+  inicio: string;
+  fin?: string | null;
+  ubicacion?: Ubicacion;
+  precio?: Monto;
+}
+
+export interface Reserva extends ReservaInput {
+  id: string;
+  viajeId: string;
+  origen: "MANUAL" | "EMAIL" | "AGENCIA";
+  estado: "CONFIRMADA" | "MODIFICADA" | "CANCELADA";
+  actualizadoEn: string;
+}
+
+export interface ViajeInput {
+  nombre: string;
+  destino?: string;
+}
+
+export interface Viaje extends ViajeInput {
+  id: string;
+  estado: "ACTIVO" | "ARCHIVADO";
+  inicio: string | null;
+  fin: string | null;
+  reservas: Reserva[];
+}

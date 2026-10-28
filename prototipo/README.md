@@ -19,6 +19,17 @@ docker compose up --build
 | Estado del backend | http://localhost:8080/api/health |
 | Consola de RabbitMQ (Event Bus) | http://localhost:15672 (usuario `trotamundos` / `trotamundos`) |
 
+### Usuarios de demo
+
+Al arrancar con la base vacía se cargan dos usuarios (contraseña `demo1234`):
+
+| Usuario | Datos |
+|---|---|
+| `ana@trotamundos.test` | "Escapada a Madrid" (próximo) y "Fin de semana en Córdoba" (ya terminado: el `ArchivadoJob` lo archiva al iniciar) |
+| `bruno@trotamundos.test` | "Ski en Bariloche" (sirve para comprobar que un usuario no ve los viajes de otro) |
+
+Para volver a los datos iniciales: `docker compose down -v && docker compose up -d`.
+
 Escalar los workers asincrónicos (ADR-006):
 
 ```bash
@@ -48,7 +59,7 @@ docker compose down -v
 | Fase | Contenido | Estado |
 |---|---|---|
 | 0 | Esqueleto, contratos (OpenAPI + eventos), docker compose, healthchecks | ✅ |
-| 1 | UC-02 gestión manual, archivado automático, JWT | Pendiente |
+| 1 | UC-02 gestión manual, archivado automático, JWT | ✅ |
 | 2 | UC-01 ingesta de correos (Pub-Sub), whitelist, adaptadores de agencias | Pendiente |
 | 3 | Cache-Aside con Redis, i18n en el cliente | Pendiente |
 | 4 | Envelope encryption, revocación, compartición con designados | Pendiente |

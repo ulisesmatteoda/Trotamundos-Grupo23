@@ -5,6 +5,8 @@ x-backend-env: &backend-env
   DATABASE_URL: postgres://trotamundos:trotamundos@postgres:5432/trotamundos
   REDIS_URL: redis://redis:6379
   RABBITMQ_URL: amqp://trotamundos:trotamundos@rabbitmq:5672
+  # Secreto de firma de los JWT (ADR-005). Valor de demo: en un entorno real viene del KMS.
+  JWT_SECRET: trotamundos-demo-jwt-secret-no-usar-en-produccion
 
 services:
   # --- Capa de Datos -------------------------------------------------------
@@ -56,6 +58,7 @@ services:
     environment:
       <<: *backend-env
       PORT: "3000"
+      SEED_DEMO: "true"
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -73,9 +76,12 @@ services:
     command: ["node", "dist/workers/main.js"]
     environment:
       <<: *backend-env
+      # Frecuencia del ArchivadoJob; corta para que se vea en la demo.
+      ARCHIVADO_INTERVALO_MS: "30000"
     depends_on:
       rabbitmq: { condition: service_healthy }
-      postgres: { condition: service_healthy }
+      # La API aplica las migraciones al arrancar.
+      backend: { condition: service_healthy }
     restart: unless-stopped
 
   # --- Sistemas externos simulados -----------------------------------------
