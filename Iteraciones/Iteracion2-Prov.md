@@ -122,10 +122,16 @@ Esta vista modela el comportamiento dinámico del sistema en tiempo de ejecució
 
 ```mermaid
 graph TD
+    %% Definición de estilos y colores
+    classDef externo fill:#f8d7da,stroke:#dc3545,stroke-width:2px,color:#721c24;
+    classDef pubsub fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#856404;
+    classDef core fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#155724;
+    classDef adapter fill:#cce5ff,stroke:#007bff,stroke-width:2px,color:#004085;
+
     %% Entidades Externas
     subgraph Externos["Entidades Externas"]
-        UserMail["Mail de Reserva del Usuario"]
-        AgenciaAPI["APIs Agencias (Booking / Despegar / Airbnb)"]
+        UserMail["Mail de Reserva del Usuario"]:::externo
+        AgenciaAPI["APIs Agencias (Booking / Despegar / Airbnb)"]:::externo
     end
 
     %% Backend Trotamundos
@@ -133,19 +139,19 @@ graph TD
 
         %% Canal Pub/Sub de Mails
         subgraph SubsystemMail["Módulo de Ingesta Asincrónica (EDA / Pub-Sub)"]
-            EmailIngestion["Email Ingestion Listener (Publisher)"]
-            EventBus(("Event Bus / Message Broker"))
-            EmailSubscriber["Itinerario Email Consumer (Subscriber)"]
+            EmailIngestion["Email Ingestion Listener (Publisher)"]:::pubsub
+            EventBus(("Event Bus / Message Broker")):::pubsub
+            EmailSubscriber["Itinerario Email Consumer (Subscriber)"]:::pubsub
         end
 
         %% Core de Negocio
-        DomainLogic["Lógica de Negocio (ViajeService / Itinerarios)"]
+        DomainLogic["Lógica de Negocio (ViajeService / Itinerarios)"]:::core
 
         %% Capa de Integración / Adaptadores
         subgraph SubsystemIntegrations["Capa de Integración de Agencias (Adapter)"]
-            AdapterInterface["<<Interface>> IAgenciaAdapter"]
-            BookingAdapter["BookingAdapter"]
-            DespegarAdapter["DespegarAdapter"]
+            AdapterInterface["<<Interface>> IAgenciaAdapter"]:::adapter
+            BookingAdapter["BookingAdapter"]:::adapter
+            DespegarAdapter["DespegarAdapter"]:::adapter
         end
     end
 
@@ -161,6 +167,18 @@ graph TD
     
     BookingAdapter -->|"Petición HTTP/REST"| AgenciaAPI
     DespegarAdapter -->|"Petición HTTP/REST"| AgenciaAPI
+
+    %% Leyenda Gráfica
+    subgraph Leyenda["Leyenda de Colores"]
+        L1[Rojo: Entidades Externas]:::externo
+        L2[Amarillo: Módulo Pub/Sub]:::pubsub
+        L3[Verde: Core de Negocio]:::core
+        L4[Azul: Adaptadores e Interfaces]:::adapter
+    end
+    
+    %% Ocultar líneas de la leyenda para que flote sola
+    L1 ~~~ L2 ~~~ L3 ~~~ L4
+    style Leyenda fill:#f9f9f9,stroke:#666,stroke-width:1px,stroke-dasharray: 5 5
 ```
 
 ### Vista 2: Vista de Módulos (Estructura de Código / Clases e Interfaces)
@@ -168,6 +186,8 @@ Esta vista representa la organización estática del código fuente, las interfa
 
 ```mermaid
 classDiagram
+    note "Leyenda de Colores:\nVerde: Lógica de Negocio\nNaranja: Eventos Pub/Sub\nGris Punteado: Interfaces\nVioleta: Implementaciones de Adaptadores"
+
     class ViajeService {
         +procesarReservaMail(datosReserva)
         +sincronizarConAgencia(agenciaId)
@@ -207,5 +227,15 @@ classDiagram
     
     IAgenciaAdapter <|.. BookingAdapter : implementa
     IAgenciaAdapter <|.. DespegarAdapter : implementa
-```
 
+    %% Aplicación de colores directos a las clases
+    style ViajeService fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#155724
+    
+    style EmailIngestionListener fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#856404
+    style ItinerarioEmailConsumer fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#856404
+    
+    style IAgenciaAdapter fill:#f8f9fa,stroke:#6c757d,stroke-width:2px,color:#495057,stroke-dasharray: 5 5
+    
+    style BookingAdapter fill:#e2d9f3,stroke:#6f42c1,stroke-width:2px,color:#432874
+    style DespegarAdapter fill:#e2d9f3,stroke:#6f42c1,stroke-width:2px,color:#432874
+```
