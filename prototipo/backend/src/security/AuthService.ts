@@ -33,12 +33,18 @@ export const AuthService = {
     };
   },
 
-  validar(token: string): Sesion {
+  async validar(token: string): Promise<Sesion> {
+    let payload: jwt.JwtPayload;
     try {
-      const payload = jwt.verify(token, config.jwtSecret) as jwt.JwtPayload;
-      return { usuarioId: payload.sub as string, email: payload.email };
+      payload = jwt.verify(token, config.jwtSecret) as jwt.JwtPayload;
     } catch {
       throw new ErrorDominio("TOKEN_INVALIDO", 401);
     }
+    // Un token bien firmado puede apuntar a un usuario que ya no existe (p. ej. si se recreó la base):
+    // se rechaza para que el cliente vuelva al login en vez de mostrar una sesión vacía.
+    if (!(await UsuarioRepository.porId(payload.sub as string))) {
+      throw new ErrorDominio("TOKEN_INVALIDO", 401);
+    }
+    return { usuarioId: payload.sub as string, email: payload.email };
   },
 };

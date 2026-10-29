@@ -11,13 +11,16 @@ export function requerirJwt(req: Request, res: Response, next: NextFunction): vo
     next(new ErrorDominio("TOKEN_REQUERIDO", 401));
     return;
   }
-  try {
-    res.locals.sesion = AuthService.validar(token);
-    next();
-  } catch (err) {
-    // Un token presente pero inválido (firma adulterada, vencido) es un evento de seguridad (QA-04a).
-    AuditoriaSeguridad.registrar("TOKEN_INVALIDO", { recurso: `${req.method} ${req.originalUrl}`, ip: req.ip }).finally(() => next(err));
-  }
+  AuthService.validar(token).then(
+    (sesion) => {
+      res.locals.sesion = sesion;
+      next();
+    },
+    (err) => {
+      // Un token presente pero inválido (firma adulterada, vencido) es un evento de seguridad (QA-04a).
+      AuditoriaSeguridad.registrar("TOKEN_INVALIDO", { recurso: `${req.method} ${req.originalUrl}`, ip: req.ip }).finally(() => next(err));
+    },
+  );
 }
 
 export function usuarioDe(res: Response): string {
