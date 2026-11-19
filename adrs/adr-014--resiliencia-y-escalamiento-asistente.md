@@ -1,0 +1,15 @@
+# ADR-014: Resiliencia del Acceso al LLM (Timeout, Circuit Breaker y Bulkhead) y Escalamiento a la Agencia
+
+### Contexto
+El asistente depende de un servicio externo de inferencia, más lento y menos predecible que el resto de la plataforma. Durante una disrupción masiva, cuando más usuarios consultan (`QA-07c`), el proveedor puede saturarse o caer, y una espera prolongada en cada solicitud acumularía conexiones bloqueadas que degradarían al resto de la API. El usuario afectado, sin embargo, debe poder llegar a su agencia en un máximo de 3 toques (`QA-06c`, `QA-02b`). La Iteración 5 ya resolvió la derivación a la agencia con timeout y reintento asincrónico (ADR-009).
+
+### Decisión
+Aplicamos un **decorador `LlmConResiliencia`** sobre `ILlmAdapter` (ADR-011) que incorpora un **timeout** por llamada (inicialmente 6 s), un **circuit breaker** que abre el circuito tras fallas consecutivas (inicialmente 5) y responde de inmediato sin invocar al proveedor, y un **bulkhead** que limita las llamadas concurrentes por nodo. Cada turno tiene además un plazo total (inicialmente 12 s) y un máximo de pasos de herramientas (inicialmente 4). En el API Gateway se aplica un **límite de mensajes por usuario** con contadores en Redis (inicialmente 10 por minuto), que responde `429` con aviso en menos de 800 ms. Cuando el LLM no está disponible o se excede un límite, el turno termina con un aviso y una **acción sugerida de derivación directa** que usa el `SoporteService` existente (timeout de 2 s, reintento por el Event Bus e idempotencia por `casoId`, ADR-009) **sin depender del LLM**. En operación normal, el asistente escala mediante la herramienta `derivar_a_agencia` cuando el modelo lo decide, el usuario lo solicita, la reserva es de un proveedor o hay dos turnos sin resolver; el resumen del problema viaja en la descripción del caso. Todos los valores son parámetros de configuración a calibrar con mediciones.
+
+### Alternativas Consideradas
+* **Solo timeout por llamada (Descartada):** Es más simple, pero durante una caída cada usuario espera el timeout completo y se acumulan solicitudes bloqueadas que degradan al resto de la API, en contra de `QA-07c`.
+* **Procesar cada conversación de forma asincrónica por el Event Bus (Descartada):** Absorbe picos con una cola, pero la conversación es interactiva y la cola agrega latencia y complejidad en la entrega de la respuesta, en contra de `QA-01d`.
+
+### Consecuencias
+* **Positivas:** Con el proveedor caído, la respuesta de degradación es inmediata en lugar de esperar el timeout. El consumo del asistente queda aislado del resto de la API. El camino a la agencia nunca depende del LLM. Se reutilizan `SoporteService`, el Event Bus y los nodos *stateless* sin infraestructura nueva.
+* **Negativas:** Hay más lógica de resiliencia que configurar y calibrar, y durante la degradación el usuario pierde la comodidad conversacional. *Mitigación:* parámetros externalizados en configuración y modos lento y caído del `MockLlmAdapter` para validarlos.
