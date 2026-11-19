@@ -41,6 +41,7 @@ El detalle completo (escenarios de 6 partes) está en [`docs/drivers.md`](./docs
 | **UC-01** | Unificación e integración automática de reservas (escaneo de correos y APIs de terceros). |
 | **UC-02** | Gestión manual de reservas y ciclo de vida del viaje (agrupación y archivado automático). |
 | **UC-03** | Analítica de datos y monetización (consultas analíticas pesadas). |
+| **UC-04** | Asistente virtual (Opción B): primer nivel de soporte conversacional; delega a la agencia solo los casos complejos. |
 
 ### Atributos de Calidad
 | ID | Atributo | Descripción |
@@ -53,6 +54,8 @@ El detalle completo (escenarios de 6 partes) está en [`docs/drivers.md`](./docs
 | **QA-06** | Usabilidad e i18n | Capacidades nativas del móvil (GPS), resolución de problemas y operación multirregión. |
 | **QA-07** | Escalabilidad | 15M de cuentas, 2M WAU y picos masivos por disrupciones. |
 
+El asistente virtual suma escenarios dentro de estas familias: `QA-01d` (latencia del turno), `QA-02b` (falla del LLM), `QA-04e` y `QA-04f` (aislamiento de acciones y datos enviados al LLM), `QA-05c` (cambio de proveedor o nueva herramienta), `QA-06e` (escalamiento a la agencia) y `QA-07c` (picos de conversaciones).
+
 ### Restricciones y Preocupaciones
 | ID | Descripción |
 |---|---|
@@ -60,15 +63,17 @@ El detalle completo (escenarios de 6 partes) está en [`docs/drivers.md`](./docs
 | **CON-02** | Lectura de correos respetando OAuth2 / IMAP. |
 | **CON-03** | Desarrollo guiado por especificaciones (*Spec-driven*), ADRs y prototipo ejecutable. |
 | **CON-04** | Operación multirregión e internacional. |
+| **CON-05** | LLM como servicio externo (datos mínimos y tolerancia a su indisponibilidad). |
 | **CRN-01** | Estructura general *greenfield*. |
 | **CRN-02** | Desacoplamiento del procesamiento asincrónico. |
 | **CRN-03** | Separación de cargas OLTP vs. OLAP. |
 | **CRN-04** | Seguridad e identidad para compartir contenido. |
+| **CRN-05** | Orquestación segura de un agente conversacional. |
 
 ---
 
 ## Arquitectura e Iteraciones (ADD)
-La arquitectura se diseñó de forma incremental con el método **Attribute-Driven Design (ADD)** a lo largo de 5 iteraciones:
+La arquitectura se diseñó de forma incremental con el método **Attribute-Driven Design (ADD)** a lo largo de 6 iteraciones:
 
 * **[Iteración 1: Estructura General del Sistema](./Iteraciones/Iteracion-1.md)**
 Estilo **Cliente-Servidor Multi-Tier con backend en 5 capas lógicas** (Presentación, API Gateway, Lógica de Negocio, Integración y Datos), con separación entre procesamiento sincrónico y asincrónico y bases OLTP/OLAP segregadas.
@@ -85,7 +90,8 @@ Estilo **Cliente-Servidor Multi-Tier con backend en 5 capas lógicas** (Presenta
 * **[Iteración 5: Redes Sociales, Agencia Preferida y Compartición Segura](./Iteraciones/Iteracion-5.md)**
 Extensión del ACL con interfaces segregadas (`IRedSocialAdapter`, `IAgenciaSoporteAdapter`), **timeout con reintento asincrónico** para la derivación a la agencia y **compartición por enlace con lista de personas designadas**.
 
-> El módulo funcional avanzado (Opción A o B, 2da entrega) se abordará en una iteración posterior.
+* **[Iteración 6: Módulo Avanzado (Opción B) — Asistente Virtual](./Iteraciones/Iteracion-6.md)**
+**ACL para el LLM** (`ILlmAdapter`), **tool calling** sobre los servicios de dominio con la identidad del JWT y contexto mínimo, **confirmación humana** de las acciones de escritura (`AccionPendiente`) y **resiliencia** (timeout, circuit breaker, bulkhead y límite por usuario) con degradación hacia la derivación a la agencia.
 
 ---
 
@@ -102,6 +108,10 @@ Las decisiones de diseño están registradas en formato **MADR** en la carpeta [
 * **[ADR-008](./adrs/adr-008-client-side-i18n.md)** Internacionalización en el cliente con backend neutro en UTC.
 * **[ADR-009](./adrs/adr-009-acl-redes-sociales-y-agencia-preferida.md)** Extensión del ACL para redes sociales y agencia preferida, con timeout y reintento asincrónico.
 * **[ADR-010](./adrs/adr-010-comparticion-itinerarios-designados.md)** Compartición de itinerarios mediante enlace con lista de personas designadas.
+* **[ADR-011](./adrs/adr-011-acl-llm-adapter.md)** Anti-Corruption Layer con Adapter para el proveedor de LLM (`ILlmAdapter`).
+* **[ADR-012](./adrs/adr-012-tool-calling-servicios-dominio.md)** Tool calling sobre servicios de dominio con identidad del JWT y contexto mínimo.
+* **[ADR-013](./adrs/adr-013-confirmacion-humana-acciones.md)** Confirmación humana de las acciones de escritura del asistente.
+* **[ADR-014](./adrs/adr-014-resiliencia-y-escalamiento-asistente.md)** Resiliencia del acceso al LLM y escalamiento a la agencia.
 
 ---
 
@@ -116,11 +126,12 @@ Trotamundos-Grupo23/
 │   ├── Iteracion-2.md
 │   ├── Iteracion-3.md
 │   ├── Iteracion-4.md
-│   └── Iteracion-5.md
+│   ├── Iteracion-5.md
+│   └── Iteracion-6.md
 ├── adrs/                   # Architecture Decision Records (MADR)
 │   ├── adr-001-estilo-arquitectonico.md
 │   ├── ...
-│   └── adr-010-comparticion-itinerarios-designados.md
+│   └── adr-014-resiliencia-y-escalamiento-asistente.md
 ├── prototipo/              # Prototipo ejecutable (Docker Compose), contratos y trazabilidad
 └── README.md
 ```
