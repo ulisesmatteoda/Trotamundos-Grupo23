@@ -28,6 +28,7 @@ tags:
   - name: Integraciones
   - name: Compartir
   - name: Soporte
+  - name: Asistente
 
 paths:
   /health:
@@ -614,6 +615,114 @@ paths:
         "401": { $ref: "#/components/responses/NoAutorizado" }
         "404": { $ref: "#/components/responses/NoEncontrado" }
 
+  /asistente/mensajes:
+    post:
+      tags: [Asistente]
+      summary: Envía un mensaje al asistente virtual y devuelve su respuesta
+      description: |
+        Turno de conversación: el AsistenteService invoca al LLM (a través de ILlmAdapter) y
+        ejecuta herramientas con la identidad del JWT, con un máximo de pasos y un plazo de
+        12 s. Si el LLM no está disponible responde 200 con `estado: DEGRADADO` y la acción
+        sugerida de derivar a la agencia (ADR-014). Límite de mensajes por usuario y minuto.
+      x-fase: 7
+      x-trazabilidad: [UC-04, QA-01d, QA-02b, QA-04e, QA-07c, ADR-011, ADR-012, ADR-014]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [texto]
+              properties:
+                texto: { type: string, minLength: 1, maxLength: 1000 }
+                idioma: { type: string, enum: [es, en, pt], description: Idioma de la respuesta (ADR-008) }
+      responses:
+        "200":
+          description: Respuesta del asistente (o aviso de degradación)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RespuestaAsistente" }
+        "400": { $ref: "#/components/responses/Invalido" }
+        "401": { $ref: "#/components/responses/NoAutorizado" }
+        "429":
+          description: Se superó el límite de mensajes por minuto (`LIMITE_MENSAJES`); `detalle.accionSugerida` ofrece la agencia
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /asistente/conversacion:
+    get:
+      tags: [Asistente]
+      summary: Mensajes recientes de la conversación del usuario
+      x-fase: 7
+      x-trazabilidad: [UC-04, QA-01d]
+      responses:
+        "200":
+          description: Conversación
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [mensajes]
+                properties:
+                  mensajes:
+                    type: array
+                    items: { $ref: "#/components/schemas/MensajeAsistente" }
+        "401": { $ref: "#/components/responses/NoAutorizado" }
+
+  /asistente/acciones/{accionId}/confirmar:
+    parameters:
+      - $ref: "#/components/parameters/AccionId"
+    post:
+      tags: [Asistente]
+      summary: Confirma una acción propuesta por el asistente y la aplica
+      description: |
+        Única vía por la que una propuesta del asistente modifica datos (ADR-013). Verifica
+        que la acción sea del usuario, siga pendiente, no haya vencido y que la reserva no haya
+        cambiado. No pasa por el LLM. Idempotente: confirmar de nuevo devuelve el mismo resultado.
+      x-fase: 7
+      x-trazabilidad: [QA-04e, ADR-013]
+      responses:
+        "200":
+          description: Acción confirmada y reserva actualizada
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [accion, reserva]
+                properties:
+                  accion: { $ref: "#/components/schemas/AccionPendiente" }
+                  reserva: { $ref: "#/components/schemas/Reserva" }
+        "401": { $ref: "#/components/responses/NoAutorizado" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+        "409":
+          description: "`ACCION_NO_PENDIENTE`, `ACCION_EXPIRADA` o `RESERVA_CAMBIO`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /asistente/acciones/{accionId}/cancelar:
+    parameters:
+      - $ref: "#/components/parameters/AccionId"
+    post:
+      tags: [Asistente]
+      summary: Descarta una acción propuesta por el asistente
+      x-fase: 7
+      x-trazabilidad: [ADR-013]
+      responses:
+        "200":
+          description: Acción cancelada
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccionPendiente" }
+        "401": { $ref: "#/components/responses/NoAutorizado" }
+        "404": { $ref: "#/components/responses/NoEncontrado" }
+        "409":
+          description: "`ACCION_NO_PENDIENTE`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
 components:
   securitySchemes:
     bearerAuth:
@@ -633,6 +742,11 @@ components:
       schema: { type: string, format: uuid }
     ReservaId:
       name: reservaId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    AccionId:
+      name: accionId
       in: path
       required: true
       schema: { type: string, format: uuid }
@@ -895,3 +1009,50 @@ components:
         intentos: { type: integer }
         creadoEn: { type: string, format: date-time }
         actualizadoEn: { type: string, format: date-time }
+
+    AccionPendiente:
+      type: object
+      description: Propuesta de modificación que solo se aplica si el dueño la confirma (ADR-013)
+      required: [id, tipo, reservaId, nuevoInicio, estado, expiraEn]
+      properties:
+        id: { type: string, format: uuid }
+        tipo: { type: string, enum: [REPROGRAMAR_RESERVA] }
+        reservaId: { type: string, format: uuid }
+        nuevoInicio: { type: string, format: date-time }
+        nuevoFin: { type: string, format: date-time, nullable: true }
+        estado: { type: string, enum: [PENDIENTE, CONFIRMADA, CANCELADA, EXPIRADA] }
+        expiraEn: { type: string, format: date-time }
+
+    MensajeAsistente:
+      type: object
+      required: [id, rol, creadoEn]
+      properties:
+        id: { type: string, format: uuid }
+        rol: { type: string, enum: [usuario, asistente] }
+        texto: { type: string, nullable: true }
+        codigo:
+          type: string
+          nullable: true
+          description: Aviso sin texto libre que traduce el cliente (ASISTENTE_NO_DISPONIBLE, ASISTENTE_NO_RESUELTO, ASISTENTE_SIN_RESPUESTA)
+        accion: { allOf: [{ $ref: "#/components/schemas/AccionPendiente" }], nullable: true }
+        caso: { allOf: [{ $ref: "#/components/schemas/CasoSoporte" }], nullable: true }
+        creadoEn: { type: string, format: date-time }
+
+    RespuestaAsistente:
+      type: object
+      required: [estado, mensajes]
+      properties:
+        estado:
+          type: string
+          enum: [OK, DEGRADADO]
+          description: DEGRADADO = el LLM no está disponible; se ofrece la derivación directa (ADR-014)
+        mensajes:
+          type: array
+          description: El mensaje del usuario y la respuesta del asistente
+          items: { $ref: "#/components/schemas/MensajeAsistente" }
+        accionSugerida:
+          type: object
+          nullable: true
+          properties:
+            tipo: { type: string, enum: [DERIVAR_A_AGENCIA] }
+            reservaId: { type: string, format: uuid, nullable: true }

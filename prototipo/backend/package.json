@@ -12,6 +12,7 @@
     "dev:worker": "tsx watch src/workers/main.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "1.6.0",
     "amqplib": "0.10.5",
     "express": "4.21.2",
     "ioredis": "5.4.2",

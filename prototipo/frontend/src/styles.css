@@ -508,3 +508,121 @@ textarea {
     max-width: none;
   }
 }
+
+/* Asistente virtual (Iteración 6) */
+.asistente-boton {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  border-radius: 999px;
+  padding: 12px 18px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  z-index: 5;
+}
+
+.asistente {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  width: min(400px, calc(100vw - 32px));
+  height: min(600px, calc(100vh - 40px));
+  display: flex;
+  flex-direction: column;
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  z-index: 5;
+}
+
+.asistente-encabezado {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--borde);
+}
+
+.asistente-mensajes {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.burbuja {
+  max-width: 88%;
+  padding: 8px 12px;
+  border-radius: 10px;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.burbuja p {
+  margin: 0;
+}
+
+.burbuja.usuario {
+  align-self: flex-end;
+  background: var(--primario);
+  color: var(--primario-texto);
+}
+
+.burbuja.asistente {
+  align-self: flex-start;
+  background: var(--fondo);
+  border: 1px solid var(--borde);
+}
+
+.tarjeta-accion {
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid var(--primario);
+  border-radius: 8px;
+  background: var(--superficie);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  white-space: normal;
+}
+
+.escribiendo {
+  font-style: italic;
+}
+
+.opcion-reserva {
+  text-align: left;
+}
+
+.asistente-pie {
+  border-top: 1px solid var(--borde);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.asistente-form {
+  display: flex;
+  gap: 8px;
+}
+
+.asistente-form input {
+  flex: 1;
+  min-width: 0;
+}
+
+.asistente .error {
+  margin: 0 14px 8px;
+}
+
+@media (max-width: 560px) {
+  .asistente {
+    right: 8px;
+    bottom: 8px;
+    width: calc(100vw - 16px);
+    height: calc(100vh - 16px);
+  }
+}

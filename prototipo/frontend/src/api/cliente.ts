@@ -1,12 +1,15 @@
 // Cliente HTTP del API Gateway. La Capa de Presentación solo habla con /api (Iteración 1, capas estrictas).
 import {
+  AccionPendiente,
   CasoSoporte,
   Compartido,
   ConexionCorreo,
+  MensajeAsistente,
   RemitenteSeguro,
   Reserva,
   ReservaInput,
   ResultadoSincronizacion,
+  RespuestaAsistente,
   Usuario,
   Viaje,
   ViajeCompartido,
@@ -17,7 +20,7 @@ export class ErrorApi extends Error {
   constructor(
     readonly status: number,
     readonly codigo: string,
-    readonly detalle?: Record<string, string>,
+    readonly detalle?: Record<string, any>,
   ) {
     super(codigo);
   }
@@ -93,4 +96,12 @@ export const api = {
   listarAgencias: () => pedir<string[]>("GET", "/integraciones/agencias"),
   sincronizarAgencia: (proveedor: string) =>
     pedir<ResultadoSincronizacion>("POST", `/integraciones/agencias/${encodeURIComponent(proveedor)}/sincronizar`),
+
+  // Asistente virtual (Iteración 6). Confirmar o cancelar una acción no pasa por el chat (ADR-013).
+  conversacionAsistente: () => pedir<{ mensajes: MensajeAsistente[] }>("GET", "/asistente/conversacion"),
+  enviarMensajeAsistente: (texto: string, idioma: string) =>
+    pedir<RespuestaAsistente>("POST", "/asistente/mensajes", { texto, idioma }),
+  confirmarAccion: (accionId: string) =>
+    pedir<{ accion: AccionPendiente; reserva: Reserva }>("POST", `/asistente/acciones/${accionId}/confirmar`),
+  cancelarAccion: (accionId: string) => pedir<AccionPendiente>("POST", `/asistente/acciones/${accionId}/cancelar`),
 };

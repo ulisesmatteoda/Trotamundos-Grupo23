@@ -7,9 +7,10 @@ import { manejarErrores } from "./api/manejoErrores";
 import { migrar } from "./persistence/migraciones";
 import { sembrarDemo } from "./persistence/seed";
 import { ViajeService } from "./domain/ViajeService";
-import { adaptadoresDeAgencias, adaptadoresDeRedes, adaptadoresDeSoporte } from "./integration/registroAgencias";
+import { adaptadorLlm, adaptadoresDeAgencias, adaptadoresDeRedes, adaptadoresDeSoporte } from "./integration/registroAgencias";
 import { CompartirService } from "./domain/CompartirService";
 import { SoporteService } from "./domain/SoporteService";
+import { AsistenteService } from "./domain/asistente/AsistenteService";
 import { ConexionCorreoService } from "./domain/ConexionCorreoService";
 import { GmailOAuthAdapter } from "./integration/email/GmailOAuthAdapter";
 
@@ -21,6 +22,7 @@ async function iniciar(): Promise<void> {
   ViajeService.configurarAgencias(adaptadoresDeAgencias());
   CompartirService.configurarRedes(adaptadoresDeRedes());
   SoporteService.configurarAgencias(adaptadoresDeSoporte());
+  AsistenteService.configurarLlm(adaptadorLlm());
   ConexionCorreoService.configurarProveedores([
     new GmailOAuthAdapter(config.correoOauthUrl, config.correoClientId, config.correoClientSecret),
   ]);

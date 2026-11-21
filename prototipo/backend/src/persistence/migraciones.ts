@@ -132,6 +132,50 @@ const MIGRACIONES: { version: number; sql: string }[] = [
       );
     `,
   },
+  {
+    version: 6,
+    sql: `
+      -- Asistente virtual (Iteración 6, ADR-012 y ADR-013). Una conversación por usuario; se
+      -- borra con la cuenta (ON DELETE CASCADE) y sus mensajes vencen a los 30 días.
+      CREATE TABLE conversacion (
+        id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        usuario_id     uuid NOT NULL UNIQUE REFERENCES usuario(id) ON DELETE CASCADE,
+        idioma         text NOT NULL,
+        -- Reserva sobre la que se viene hablando: destino de la derivación directa (ADR-014).
+        reserva_foco   uuid REFERENCES reserva(id) ON DELETE SET NULL,
+        creado_en      timestamptz NOT NULL DEFAULT now(),
+        actualizado_en timestamptz NOT NULL DEFAULT now()
+      );
+
+      -- Propuesta de modificación que solo se aplica si el dueño la confirma desde la interfaz.
+      CREATE TABLE accion_pendiente (
+        id              uuid PRIMARY KEY,
+        usuario_id      uuid NOT NULL REFERENCES usuario(id) ON DELETE CASCADE,
+        tipo            text NOT NULL,
+        reserva_id      uuid NOT NULL REFERENCES reserva(id) ON DELETE CASCADE,
+        parametros      jsonb NOT NULL,
+        version_reserva text NOT NULL,
+        estado          text NOT NULL DEFAULT 'PENDIENTE' CHECK (estado IN ('PENDIENTE', 'CONFIRMADA', 'CANCELADA', 'EXPIRADA')),
+        expira_en       timestamptz NOT NULL,
+        creado_en       timestamptz NOT NULL DEFAULT now(),
+        resuelta_en     timestamptz
+      );
+
+      -- El contenido de cada mensaje es un sobre cifrado (envelope encryption, QA-04d).
+      -- codigo: aviso sin texto libre (p. ej. asistente no disponible) que traduce el cliente.
+      CREATE TABLE mensaje (
+        id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        conversacion_id uuid NOT NULL REFERENCES conversacion(id) ON DELETE CASCADE,
+        rol             text NOT NULL CHECK (rol IN ('usuario', 'asistente')),
+        contenido       jsonb,
+        codigo          text,
+        accion_id       uuid REFERENCES accion_pendiente(id) ON DELETE SET NULL,
+        caso_id         uuid REFERENCES caso_soporte(id) ON DELETE SET NULL,
+        creado_en       timestamptz NOT NULL DEFAULT clock_timestamp()
+      );
+      CREATE INDEX mensaje_por_conversacion ON mensaje (conversacion_id, creado_en);
+    `,
+  },
 ];
 
 const LOCK_MIGRACIONES = 724_001;

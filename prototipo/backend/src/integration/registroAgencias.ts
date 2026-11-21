@@ -10,6 +10,10 @@ import { FacebookAdapter } from "./redes/FacebookAdapter";
 import { XAdapter } from "./redes/XAdapter";
 import { IAgenciaSoporteAdapter } from "./soporte/IAgenciaSoporteAdapter";
 import { DespegarSoporteAdapter } from "./soporte/DespegarSoporteAdapter";
+import { ILlmAdapter } from "./llm/ILlmAdapter";
+import { ClaudeAdapter } from "./llm/ClaudeAdapter";
+import { MockLlmAdapter } from "./llm/MockLlmAdapter";
+import { LlmConResiliencia } from "./llm/LlmConResiliencia";
 
 // Proveedores de reservas (ADR-002)
 export const adaptadoresDeAgencias = (): IAgenciaAdapter[] => [
@@ -26,3 +30,13 @@ export const adaptadoresDeRedes = (): IRedSocialAdapter[] => [
 
 // Agencias de soporte (ADR-009)
 export const adaptadoresDeSoporte = (): IAgenciaSoporteAdapter[] => [new DespegarSoporteAdapter(`${config.agenciasUrl}/despegar`)];
+
+// Proveedor del LLM (ADR-011), siempre envuelto en el decorador de resiliencia (ADR-014).
+export function adaptadorLlm(): ILlmAdapter {
+  const proveedor = config.llmProveedor === "claude" ? new ClaudeAdapter(config.llmModelo) : new MockLlmAdapter(config.llmUrl);
+  return new LlmConResiliencia(proveedor, {
+    fallasParaAbrir: config.llmFallasParaAbrir,
+    enfriamientoMs: config.llmEnfriamientoMs,
+    maxConcurrentes: config.llmMaxConcurrentes,
+  });
+}

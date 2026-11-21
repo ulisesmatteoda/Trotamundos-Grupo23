@@ -8,9 +8,11 @@ import * as integraciones from "../api/controllers/IntegracionesController";
 import * as whitelist from "../api/controllers/WhitelistController";
 import * as seguridad from "../api/controllers/SeguridadController";
 import * as soporte from "../api/controllers/SoporteController";
+import * as asistente from "../api/controllers/AsistenteController";
 import { conErrores, manejarErrores } from "../api/manejoErrores";
 import { requerirJwt } from "./autenticacion";
 import { requerirSecretoWebhook } from "./webhook";
+import { limitarMensajesAsistente } from "./limiteMensajes";
 
 export function crearGateway(): Router {
   const gateway = Router();
@@ -50,6 +52,12 @@ export function crearGateway(): Router {
 
   gateway.post("/reservas/:reservaId/asistencia", conErrores(soporte.solicitarAsistencia));
   gateway.get("/casos/:casoId", conErrores(soporte.obtenerCaso));
+
+  // Asistente virtual (Iteración 6). Solo el envío de mensajes invoca al LLM y tiene límite.
+  gateway.post("/asistente/mensajes", limitarMensajesAsistente, conErrores(asistente.enviarMensaje));
+  gateway.get("/asistente/conversacion", conErrores(asistente.obtenerConversacion));
+  gateway.post("/asistente/acciones/:accionId/confirmar", conErrores(asistente.confirmarAccion));
+  gateway.post("/asistente/acciones/:accionId/cancelar", conErrores(asistente.cancelarAccion));
 
   gateway.get("/integraciones/redes", conErrores(seguridad.listarRedes));
   gateway.get("/integraciones/agencias", conErrores(integraciones.listarAgencias));

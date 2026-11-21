@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "trotamundos/asistente/herramientas",
+  "title": "Herramientas del asistente virtual",
+  "description": "Contrato de las herramientas que el AsistenteService expone al LLM (ADR-012, Iteración 6). Cada una delega en un servicio de dominio existente y se ejecuta siempre con el usuarioId del JWT, nunca con uno provisto por el modelo. Los argumentos se validan contra estos esquemas antes de ejecutar. Fase 7.",
+  "herramientas": [
+    {
+      "nombre": "listar_viajes",
+      "tipo": "LECTURA",
+      "descripcion": "Lista los viajes activos del usuario con sus fechas y un resumen de cada reserva (id, tipo, título, estado, origen e inicio en hora local). Usala para ubicar un viaje o una reserva antes de consultarla o proponer cambios.",
+      "argumentos": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nombre": "consultar_viaje",
+      "tipo": "LECTURA",
+      "descripcion": "Devuelve el detalle de un viaje del usuario: cada reserva con su tipo, título, proveedor, código de confirmación, estado, origen y horarios de inicio y fin en la hora local de la reserva.",
+      "argumentos": {
+        "type": "object",
+        "properties": {
+          "viajeId": {
+            "type": "string",
+            "description": "Id del viaje (de listar_viajes).",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          }
+        },
+        "required": [
+          "viajeId"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nombre": "proponer_reprogramacion",
+      "tipo": "PROPUESTA_ESCRITURA",
+      "descripcion": "Propone cambiar las fechas de una reserva de origen MANUAL. No aplica el cambio: crea una propuesta que el usuario confirma con un botón en la pantalla. Las fechas van en hora local de la reserva (AAAA-MM-DD o AAAA-MM-DDTHH:MM); si se omite la hora se mantiene la actual, y si se omite el fin se corre junto con el inicio.",
+      "argumentos": {
+        "type": "object",
+        "properties": {
+          "reservaId": {
+            "type": "string",
+            "description": "Id de la reserva.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "nuevoInicioLocal": {
+            "type": "string",
+            "description": "Nuevo inicio en hora local de la reserva.",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2})?$"
+          },
+          "nuevoFinLocal": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Nuevo fin en hora local, o null para correrlo junto con el inicio.",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}(T\\d{2}:\\d{2})?$"
+          }
+        },
+        "required": [
+          "reservaId",
+          "nuevoInicioLocal",
+          "nuevoFinLocal"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "nombre": "derivar_a_agencia",
+      "tipo": "ESCALAMIENTO",
+      "descripcion": "Deriva un problema con una reserva a la agencia de viajes preferida del usuario, que recibe todos los datos de la reserva. Usala cuando el usuario lo pide, cuando la reserva es de un proveedor (origen EMAIL o AGENCIA) y quiere cambiarla, o cuando no podés resolver el problema. El resumen describe el problema en pocas líneas.",
+      "argumentos": {
+        "type": "object",
+        "properties": {
+          "reservaId": {
+            "type": "string",
+            "description": "Id de la reserva afectada.",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "resumen": {
+            "type": "string",
+            "description": "Resumen del problema para la agencia (máx. 500 caracteres).",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "reservaId",
+          "resumen"
+        ],
+        "additionalProperties": false
+      }
+    }
+  ]
+}

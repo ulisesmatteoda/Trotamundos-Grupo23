@@ -62,7 +62,7 @@ Abrir http://localhost:8080 en el navegador e iniciar sesión con `ana@trotamund
 | Aplicación web | http://localhost:8080 |
 | Estado del backend | http://localhost:8080/api/health |
 | Consola de RabbitMQ (Event Bus) | http://localhost:15672 (usuario `trotamundos` / `trotamundos`) |
-| Simulador de sistemas externos (correo, agencias) | http://localhost:4000 |
+| Simulador de sistemas externos (correo, agencias, LLM) | http://localhost:4000 |
 
 ### 5. Detenerlo
 
@@ -100,6 +100,26 @@ Para volver a los datos iniciales: `docker compose down -v && docker compose up 
 3. Enviar el correo del remitente no seguro y la newsletter: se ignoran (ver `docker compose logs -f worker`).
 4. En la app, "Integraciones → Sincronizar" con cada proveedor: el hotel no se duplica y el tren se agrupa en el mismo viaje.
 5. En el simulador, disparar los webhooks (reprogramar vuelo, cancelar hotel): el cambio se refleja al instante.
+
+### Demo del asistente virtual (Fase 7)
+
+Por defecto el asistente usa un LLM simulado (un bot por reglas en español, inglés y portugués), así que no hace falta ninguna clave. El botón "Asistente" está abajo a la derecha del panel.
+
+1. **Consultas (UC-04):** como Ana, preguntar "¿qué viajes tengo?" o "contame del viaje a Madrid".
+2. **Reprogramar con confirmación (ADR-013):**
+   - Escribir "quiero mover el hotel Gran Vía al 28". Aparece una tarjeta con el cambio propuesto, **todavía sin aplicar**.
+   - Con "Confirmar", el hotel cambia en el panel; con "Cancelar", no pasa nada. La confirmación no pasa por el chat ni por el LLM.
+3. **Reserva de un proveedor:**
+   - En "Integraciones", sincronizar Booking y pedir "quiero cambiar el hotel de Lisboa al 20". El asistente explica que lo cambia el proveedor y resalta "Enviar a mi agencia".
+   - "Quiero hablar con mi agencia por el hotel de Lisboa" deriva el caso: aparece en "Soporte de Despegar" del simulador.
+4. **LLM caído (QA-02b):**
+   - En el simulador, sección "Proveedor del LLM", elegir "Caído" y mandar mensajes. Cada uno recibe al instante el aviso de que el asistente no está disponible, con "Enviar a mi agencia".
+   - Después de 5 fallas el contador de solicitudes deja de subir: el circuito está abierto y Trotamundos no llama al proveedor (`docker compose logs backend | grep circuito`).
+   - Con "Lento", el turno corta a los 6 s. Volviendo a "Normal", el asistente se recupera solo a los 30 s.
+5. **Límite por usuario (QA-07c):** el mensaje número 11 dentro del mismo minuto recibe el aviso de límite en lugar de llamar al LLM.
+6. **Datos que salen hacia el LLM (QA-04f):** en el simulador, "Última solicitud recibida" muestra exactamente lo que se envió. No incluye emails, precios, direcciones ni tokens.
+
+Para usar el modelo real en lugar del simulado: `LLM_PROVEEDOR=claude ANTHROPIC_API_KEY=<clave> docker compose up -d`. Cada mensaje tiene costo de inferencia.
 
 ### Demo de analítica y disponibilidad (Fase 6)
 
@@ -160,6 +180,7 @@ docker compose down -v
 | `redis` | Redis In-Memory Cache |
 | `rabbitmq` | Event Bus / Message Broker |
 | `mocks` | Sistemas externos simulados (correo, agencias, red social, agencia de soporte) |
+| `mocks` (`/llm`) | También simula el proveedor del LLM del asistente (Iteración 6) |
 | `listo` | Solo para la demo: avisa por consola cuando todo está levantado y dónde entrar |
 
 ## Estado por fases
@@ -173,6 +194,7 @@ docker compose down -v
 | 4 | OAuth2 con el correo, envelope encryption, revocación, auditoría, compartición con designados | ✅ |
 | 5 | Redes sociales, agencia preferida con reintento asincrónico, GPS | ✅ |
 | 6 | Réplica de lectura + ETL + Data Warehouse, réplicas del backend con failover | ✅ |
+| 7 | Asistente virtual (Iteración 6): tool calling, confirmación humana, resiliencia del LLM | ✅ |
 
 ## Simplificaciones respecto a la arquitectura documentada
 
@@ -191,3 +213,5 @@ y los contratos se mantienen iguales a los del diseño.
 10. **Redes sociales y agencia de soporte:** son servicios simulados. La agencia preferida se guarda por usuario (todos usan Despegar en la demo) y no tiene pantalla para cambiarla.
 11. **Rutas (GPS):** se usa la API de geolocalización del navegador y se delega la ruta en Google Maps (abre la app nativa en el celular).
 12. **ETL y Data Warehouse:** el ETL hace una recarga completa en cada lote, leyendo de la réplica (que se alimenta del WAL del primario por streaming). Una carga incremental por cambios (CDC con Debezium, como prevé la mitigación de ADR-004) queda como evolución. El DW es un PostgreSQL con modelo en estrella, no un motor columnar.
+13. **LLM del asistente:** por defecto se usa un LLM simulado (bot por reglas) para que la demo funcione sin clave ni costo. El `ClaudeAdapter` real está implementado y se activa con `LLM_PROVEEDOR=claude`. La respuesta llega completa, sin *streaming* (la Iteración 6 lo deja como evolución).
+14. **Conversaciones:** una conversación por usuario. El circuit breaker guarda su estado en Redis para que lo compartan las dos réplicas; el bulkhead es por réplica, como indica ADR-014.

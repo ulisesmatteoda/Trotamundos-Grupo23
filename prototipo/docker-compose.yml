@@ -25,6 +25,17 @@ x-backend-env: &backend-env
   SOCIAL_URL: http://mocks:4000/social
   SOCIAL_TOKEN_APP: &social-token trotamundos-demo-social-token
   URL_PUBLICA: http://localhost:8080
+  # Asistente virtual (Iteración 6). Por defecto usa el LLM simulado (ADR-011); para el
+  # proveedor real: LLM_PROVEEDOR=claude y ANTHROPIC_API_KEY en el entorno del host.
+  LLM_PROVEEDOR: ${LLM_PROVEEDOR:-mock}
+  LLM_URL: http://mocks:4000/llm
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  # Resiliencia del acceso al LLM (ADR-014): valores iniciales del diseño.
+  LLM_TIMEOUT_MS: "6000"
+  LLM_FALLAS_PARA_ABRIR: "5"
+  LLM_ENFRIAMIENTO_MS: "30000"
+  ASISTENTE_PLAZO_TURNO_MS: "12000"
+  ASISTENTE_MENSAJES_POR_MINUTO: "10"
 
 services:
   # --- Capa de Datos -------------------------------------------------------

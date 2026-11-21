@@ -102,3 +102,36 @@ export interface Viaje extends ViajeInput {
 export interface ViajeCompartido extends Viaje {
   compartidoPor: string;
 }
+
+// Asistente virtual (Iteración 6)
+export interface AccionPendiente {
+  id: string;
+  tipo: "REPROGRAMAR_RESERVA";
+  reservaId: string;
+  nuevoInicio: string;
+  nuevoFin: string | null;
+  estado: "PENDIENTE" | "CONFIRMADA" | "CANCELADA" | "EXPIRADA";
+  expiraEn: string;
+}
+
+export interface MensajeAsistente {
+  id: string;
+  rol: "usuario" | "asistente";
+  texto: string | null;
+  // Aviso sin texto libre (asistente no disponible, límite de mensajes…): lo traduce el cliente.
+  codigo: string | null;
+  accion: AccionPendiente | null;
+  caso: CasoSoporte | null;
+  creadoEn: string;
+}
+
+export interface AccionSugerida {
+  tipo: "DERIVAR_A_AGENCIA";
+  reservaId?: string | null;
+}
+
+export interface RespuestaAsistente {
+  estado: "OK" | "DEGRADADO";
+  mensajes: MensajeAsistente[];
+  accionSugerida: AccionSugerida | null;
+}

@@ -4,7 +4,7 @@ import { SoporteService } from "../../domain/SoporteService";
 import { CasoSoporte } from "../../persistence/CasoSoporteRepository";
 import { Sesion } from "../../security/AuthService";
 
-const casoDto = (c: CasoSoporte) => ({
+export const casoDto = (c: CasoSoporte) => ({
   id: c.id,
   reservaId: c.reservaId,
   agencia: c.agencia,

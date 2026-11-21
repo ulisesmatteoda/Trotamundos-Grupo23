@@ -5,6 +5,7 @@ import { Reserva, ReservaInput, Viaje, ViajeInput } from "../api/tipos";
 import { Integraciones } from "../components/Integraciones";
 import { CompartirViaje } from "../components/CompartirViaje";
 import { PedirAyuda } from "../components/PedirAyuda";
+import { Asistente } from "../components/Asistente";
 import { Aviso } from "../components/ConexionCorreo";
 import { CLAVE_RESULTADO } from "./CallbackOAuth";
 import { Modal } from "../components/Modal";
@@ -140,6 +141,8 @@ export function Panel() {
           />
         ))}
       </main>
+
+      <Asistente onItinerarioCambiado={cargar} />
 
       {edicion?.tipo === "integraciones" && (
         <Modal titulo={t("integraciones.titulo")} onCerrar={cerrar}>

@@ -103,6 +103,19 @@
         </section>
 
         <section>
+          <h2>Proveedor del LLM (QA-02b, QA-04f)</h2>
+          <p class="pista">Modo: <strong id="modo-llm">…</strong> · Solicitudes recibidas: <strong id="solicitudes-llm">0</strong></p>
+          <button data-accion="/llm/modo" data-cuerpo='{"modo":"normal"}'>Normal</button>
+          <button data-accion="/llm/modo" data-cuerpo='{"modo":"lento"}'>Lento (8 s: supera el timeout de 6 s)</button>
+          <button data-accion="/llm/modo" data-cuerpo='{"modo":"caido"}'>Caído (503)</button>
+          <p class="pista">Con el circuito abierto, el contador deja de subir: Trotamundos no llama al proveedor.</p>
+          <details>
+            <summary>Última solicitud recibida (lo único que sale de Trotamundos hacia el LLM)</summary>
+            <pre id="ultima-llm" class="pista">ninguna todavía</pre>
+          </details>
+        </section>
+
+        <section>
           <h2>Datos</h2>
           <button data-accion="/restablecer">Restablecer los datos de los proveedores</button>
           <p class="pista">Solo afecta a los sistemas simulados, no a la base de Trotamundos.</p>
@@ -177,6 +190,18 @@
       }
       refrescarIteracion5();
       setInterval(refrescarIteracion5, 3000);
+
+      function refrescarLlm() {
+        fetch("/_simular/llm/estado")
+          .then((r) => r.json())
+          .then((d) => {
+            document.getElementById("modo-llm").textContent = d.modo;
+            document.getElementById("solicitudes-llm").textContent = d.solicitudes;
+            if (d.ultimaSolicitud) document.getElementById("ultima-llm").textContent = JSON.stringify(d.ultimaSolicitud, null, 2);
+          });
+      }
+      refrescarLlm();
+      setInterval(refrescarLlm, 2000);
 
       fetch("/_simular/correo/plantillas")
         .then((r) => r.json())

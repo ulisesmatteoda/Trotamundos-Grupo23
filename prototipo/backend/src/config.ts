@@ -40,4 +40,22 @@ export const config = {
   webhookSecret: requerida("WEBHOOK_SECRET"),
   // Base de las APIs de agencias (en el prototipo, el servicio de mocks).
   agenciasUrl: process.env.AGENCIAS_URL ?? "http://mocks:4000",
+
+  // Asistente virtual (Iteración 6). Proveedor del LLM (ADR-011): "mock" (simulado, por defecto)
+  // o "claude" (requiere ANTHROPIC_API_KEY). La clave nunca sale del backend.
+  llmProveedor: process.env.LLM_PROVEEDOR ?? "mock",
+  llmUrl: process.env.LLM_URL ?? "http://mocks:4000/llm",
+  llmModelo: process.env.LLM_MODELO ?? "claude-opus-5-5",
+  // ADR-014: valores iniciales, a calibrar con mediciones.
+  llmTimeoutMs: Number(process.env.LLM_TIMEOUT_MS ?? 6000),
+  llmFallasParaAbrir: Number(process.env.LLM_FALLAS_PARA_ABRIR ?? 5),
+  llmEnfriamientoMs: Number(process.env.LLM_ENFRIAMIENTO_MS ?? 30_000),
+  llmMaxConcurrentes: Number(process.env.LLM_MAX_CONCURRENTES ?? 20),
+  asistentePlazoTurnoMs: Number(process.env.ASISTENTE_PLAZO_TURNO_MS ?? 12_000),
+  asistenteMaxPasos: Number(process.env.ASISTENTE_MAX_PASOS ?? 4),
+  asistenteMensajesPorMinuto: Number(process.env.ASISTENTE_MENSAJES_POR_MINUTO ?? 10),
+  // ADR-013: vigencia de una AccionPendiente.
+  accionPendienteTtlMs: Number(process.env.ACCION_PENDIENTE_TTL_MS ?? 10 * 60_000),
+  // ADR-012: retención acotada de las conversaciones.
+  conversacionRetencionDias: Number(process.env.CONVERSACION_RETENCION_DIAS ?? 30),
 };

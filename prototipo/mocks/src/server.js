@@ -4,6 +4,7 @@
 //   /tren       API de un operador ferroviario  — formato propietario (QA-05a)
 //   /oauth, /correo   servidor OAuth2 del proveedor de correo (CON-02), ver oauth.js
 //   /social, /despegar/soporte   redes sociales y soporte de la agencia (Iteración 5), ver iteracion5.js
+//   /llm        proveedor de LLM simulado del asistente virtual (Iteración 6), ver llm.js
 //   /_simular   acciones que dispara el simulador web (http://localhost:4000)
 // Los sistemas externos entran a Trotamundos por la puerta pública (nginx → API Gateway),
 // igual que lo haría un proveedor real.
@@ -13,6 +14,7 @@ const { crearDatos } = require("./datos");
 const correos = require("./correos");
 const oauthCorreo = require("./oauth");
 const iteracion5 = require("./iteracion5");
+const llm = require("./llm");
 
 const TROTAMUNDOS_URL = process.env.TROTAMUNDOS_URL ?? "http://web/api";
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET ?? "";
@@ -26,6 +28,7 @@ app.get("/health", (_req, res) => res.json({ estado: "ok" }));
 app.use(express.static(path.join(__dirname, "public")));
 app.use(oauthCorreo.oauth);
 app.use(iteracion5.router);
+app.use(llm.router);
 
 // ---------------------------------------------------------------- APIs de las agencias
 app.use("/booking", (_req, res, next) => (bookingCaido ? res.status(503).json({ error: "service_unavailable" }) : next()));
@@ -135,11 +138,13 @@ sim.post("/restablecer", (_req, res) => {
   bookingCaido = false;
   oauthCorreo.restablecer();
   iteracion5.restablecer();
+  llm.restablecer();
   res.json({ ok: true });
 });
 
 app.use("/_simular", sim);
 app.use("/_simular", iteracion5.sim);
+app.use("/_simular", llm.sim);
 
 const puerto = Number(process.env.PORT ?? 4000);
 app.listen(puerto, () => console.log(`[mocks] escuchando en :${puerto}`));
