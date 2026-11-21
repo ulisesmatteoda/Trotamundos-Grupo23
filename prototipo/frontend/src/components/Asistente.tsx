@@ -42,7 +42,7 @@ export function Asistente({ onItinerarioCambiado }: Props) {
   const [vista, setVista] = useState<Vista>({ tipo: "chat" });
   // Viajes activos, para mostrar las tarjetas y elegir la reserva a derivar.
   const [viajes, setViajes] = useState<Viaje[]>([]);
-  const fin = useRef<HTMLDivElement>(null);
+  const lista = useRef<HTMLDivElement>(null);
 
   const reservas = viajes.flatMap((v) => v.reservas.filter((r) => r.estado !== "CANCELADA"));
   const reservaPorId = (id?: string | null) => reservas.find((r) => r.id === id);
@@ -66,7 +66,10 @@ export function Asistente({ onItinerarioCambiado }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [abierto]);
 
-  useEffect(() => fin.current?.scrollIntoView({ block: "end" }), [mensajes, escribiendo, vista]);
+  // Solo se desplaza la lista de mensajes, nunca la página.
+  useEffect(() => {
+    if (lista.current) lista.current.scrollTop = lista.current.scrollHeight;
+  }, [mensajes, escribiendo, vista]);
 
   async function enviar(e: FormEvent) {
     e.preventDefault();
@@ -164,7 +167,7 @@ export function Asistente({ onItinerarioCambiado }: Props) {
   }
 
   return (
-    <section className="asistente" aria-label={t("asistente.titulo")}>
+    <section className="asistente-panel" aria-label={t("asistente.titulo")}>
       <header className="asistente-encabezado">
         <strong>{t("asistente.titulo")}</strong>
         <button className="icono" onClick={() => setAbierto(false)} aria-label={t("comun.cerrar")}>
@@ -173,7 +176,7 @@ export function Asistente({ onItinerarioCambiado }: Props) {
       </header>
 
       {vista.tipo === "chat" && (
-        <div className="asistente-mensajes" aria-live="polite">
+        <div ref={lista} className="asistente-mensajes" aria-live="polite">
           {!mensajes && <p className="tenue">{t("comun.cargando")}</p>}
           {mensajes?.length === 0 && <p className="pista">{t("asistente.bienvenida")}</p>}
           {mensajes?.map((m) => (
@@ -190,12 +193,11 @@ export function Asistente({ onItinerarioCambiado }: Props) {
             </div>
           ))}
           {escribiendo && <p className="tenue escribiendo">{t("asistente.escribiendo")}</p>}
-          <div ref={fin} />
         </div>
       )}
 
       {vista.tipo === "elegir-reserva" && (
-        <div className="asistente-mensajes">
+        <div ref={lista} className="asistente-mensajes">
           <p className="pista">{t("asistente.elegirReserva")}</p>
           {reservas.length === 0 && <p className="tenue">{t("asistente.sinReservas")}</p>}
           {reservas.map((r) => (
@@ -203,15 +205,13 @@ export function Asistente({ onItinerarioCambiado }: Props) {
               {t(`tipo.${r.tipo}`, undefined, r.tipo)} · {r.titulo} · {fechaHora(r.inicio, r.ubicacion?.zonaHoraria)}
             </button>
           ))}
-          <div ref={fin} />
         </div>
       )}
 
       {vista.tipo === "agencia" && (
-        <div className="asistente-mensajes">
+        <div ref={lista} className="asistente-mensajes">
           <strong>{t("soporte.titulo", { titulo: vista.reserva.titulo })}</strong>
           <PedirAyuda reserva={vista.reserva} />
-          <div ref={fin} />
         </div>
       )}
 

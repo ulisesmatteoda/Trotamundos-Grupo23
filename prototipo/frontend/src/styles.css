@@ -520,7 +520,8 @@ textarea {
   z-index: 5;
 }
 
-.asistente {
+/* "asistente-panel" y no "asistente": esa clase la llevan también las burbujas (rol). */
+.asistente-panel {
   position: fixed;
   right: 20px;
   bottom: 20px;
@@ -532,10 +533,12 @@ textarea {
   border: 1px solid var(--borde);
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
   z-index: 5;
 }
 
 .asistente-encabezado {
+  flex-shrink: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -545,6 +548,8 @@ textarea {
 
 .asistente-mensajes {
   flex: 1;
+  /* sin esto, la lista crece con los mensajes y empuja el pie fuera del panel */
+  min-height: 0;
   overflow-y: auto;
   padding: 12px 14px;
   display: flex;
@@ -597,6 +602,7 @@ textarea {
 }
 
 .asistente-pie {
+  flex-shrink: 0;
   border-top: 1px solid var(--borde);
   padding: 10px 14px;
   display: flex;
@@ -614,12 +620,12 @@ textarea {
   min-width: 0;
 }
 
-.asistente .error {
+.asistente-panel .error {
   margin: 0 14px 8px;
 }
 
 @media (max-width: 560px) {
-  .asistente {
+  .asistente-panel {
     right: 8px;
     bottom: 8px;
     width: calc(100vw - 16px);
